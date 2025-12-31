@@ -1,0 +1,3521 @@
+From 023a61255f7bcc6ac7501962ba8fb7de76cc36ba Mon Sep 17 00:00:00 2001
+From: jhonboy121 <alfredmathew05@gmail.com>
+Date: Tue, 1 Feb 2022 19:54:15 +0530
+Subject: [PATCH 4/4] base: Introduce app lock [SQUASHED]
+
+Co-authored-by: Pranav Vashi <neobuddy89@gmail.com>
+Co-authored-by: Dhina17 <dhinalogu@gmail.com>
+Co-authored-by: minaripenguin <minaripenguin@users.noreply.github.com>
+Co-authored-by: Nick <nift4@protonmail.com>
+Change-Id: If44054b5892e71b99f0a82a6757e5bb99dd0fe19
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+Signed-off-by: Ritesh <SahanyRitesh@proton.me>
+---
+ core/java/android/app/AppLockData.aidl        |   19 +
+ core/java/android/app/AppLockData.java        |  109 ++
+ core/java/android/app/AppLockManager.java     |  281 ++++
+ .../android/app/IAppLockManagerService.aidl   |   50 +
+ .../android/app/SystemServiceRegistry.java    |   12 +
+ core/java/android/content/Context.java        |    9 +
+ .../notification/StatusBarNotification.java   |   31 +-
+ .../internal/util/clover/CloverUtils.java     |  101 ++
+ core/res/AndroidManifest.xml                  |    8 +
+ core/res/res/values/custom_config.xml         |    4 +
+ core/res/res/values/custom_strings.xml        |    3 +
+ core/res/res/values/custom_symbols.xml        |    4 +
+ data/etc/com.android.settings.xml             |    1 +
+ .../collection/TargetSdkResolverTest.kt       |    2 +-
+ ...NotificationLockscreenUserManagerImpl.java |    3 +-
+ .../RemoteInputNotificationRebuilder.java     |    5 +-
+ .../SensitiveContentCoordinator.kt            |    7 +-
+ .../inflation/NotifUiAdjustmentProvider.kt    |    4 +-
+ .../inflation/NotificationRowBinderImpl.java  |    4 +-
+ .../row/ExpandableNotificationRow.java        |   20 +-
+ .../phone/StatusBarNotificationPresenter.java |    2 +-
+ services/Android.bp                           |    2 +
+ services/applock/Android.bp                   |   29 +
+ services/applock/jarjar-rules.txt             |    3 +
+ .../com/android/server/app/AppLockConfig.kt   |  426 ++++++
+ .../server/app/AppLockManagerService.kt       | 1168 +++++++++++++++++
+ .../android/server/app/BiometricUnlocker.kt   |  109 ++
+ .../app/AppLockManagerServiceInternal.java    |   80 ++
+ .../locksettings/LockSettingsService.java     |    2 +
+ .../server/notification/BubbleExtractor.java  |    6 +-
+ .../NotificationManagerInternal.java          |    3 +
+ .../NotificationManagerService.java           |   55 +-
+ .../notification/NotificationRecord.java      |   10 +
+ .../NotificationRecordExtractorData.java      |   11 +-
+ .../server/pm/LauncherAppsService.java        |   17 +
+ .../server/trust/TrustManagerService.java     |   11 +
+ .../server/wm/ActivityStartInterceptor.java   |   50 +
+ .../wm/ActivityTaskManagerInternal.java       |    2 +
+ .../server/wm/ActivityTaskManagerService.java |   17 +
+ .../server/wm/ActivityTaskSupervisor.java     |   11 +-
+ .../android/server/wm/SnapshotController.java |   10 +
+ .../java/com/android/server/SystemServer.java |    6 +
+ 42 files changed, 2677 insertions(+), 30 deletions(-)
+ create mode 100644 core/java/android/app/AppLockData.aidl
+ create mode 100644 core/java/android/app/AppLockData.java
+ create mode 100644 core/java/android/app/AppLockManager.java
+ create mode 100644 core/java/android/app/IAppLockManagerService.aidl
+ create mode 100644 core/java/com/android/internal/util/clover/CloverUtils.java
+ create mode 100644 services/applock/Android.bp
+ create mode 100644 services/applock/jarjar-rules.txt
+ create mode 100644 services/applock/java/com/android/server/app/AppLockConfig.kt
+ create mode 100644 services/applock/java/com/android/server/app/AppLockManagerService.kt
+ create mode 100644 services/applock/java/com/android/server/app/BiometricUnlocker.kt
+ create mode 100644 services/core/java/com/android/server/app/AppLockManagerServiceInternal.java
+
+diff --git a/core/java/android/app/AppLockData.aidl b/core/java/android/app/AppLockData.aidl
+new file mode 100644
+index 000000000000..073d1efd2505
+--- /dev/null
++++ b/core/java/android/app/AppLockData.aidl
+@@ -0,0 +1,19 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.app;
++
++parcelable AppLockData;
+\ No newline at end of file
+diff --git a/core/java/android/app/AppLockData.java b/core/java/android/app/AppLockData.java
+new file mode 100644
+index 000000000000..cb3352575c9c
+--- /dev/null
++++ b/core/java/android/app/AppLockData.java
+@@ -0,0 +1,109 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.app;
++
++import android.annotation.NonNull;
++import android.annotation.Nullable;
++import android.os.Parcel;
++import android.os.Parcelable;
++
++/**
++ * Class to hold package level information about an
++ * application for app lock.
++ *
++ * @hide
++ */
++public final class AppLockData implements Parcelable {
++
++    public static final Parcelable.Creator<AppLockData> CREATOR =
++            new Parcelable.Creator<AppLockData>() {
++
++        @Override
++        public AppLockData createFromParcel(Parcel in) {
++            return new AppLockData(in);
++        }
++
++        @Override
++        public AppLockData[] newArray(int size) {
++            return new AppLockData[size];
++        }
++    };
++
++    private final String mPackageName;
++    private final boolean mShouldProtectApp;
++    private final boolean mShouldRedactNotification;
++    private final boolean mHideFromLauncher;
++
++    /** @hide */
++    public AppLockData(
++        @NonNull final String packageName,
++        final boolean shouldProtectApp,
++        final boolean shouldRedactNotification,
++        final boolean hideFromLauncher
++    ) {
++        mPackageName = packageName;
++        mShouldProtectApp = shouldProtectApp;
++        mShouldRedactNotification = shouldRedactNotification;
++        mHideFromLauncher = hideFromLauncher;
++    }
++
++    private AppLockData(final Parcel in) {
++        mPackageName = in.readString();
++        mShouldProtectApp = in.readBoolean();
++        mShouldRedactNotification = in.readBoolean();
++        mHideFromLauncher = in.readBoolean();
++    }
++
++    @NonNull
++    public String getPackageName() {
++        return mPackageName;
++    }
++
++    public boolean getShouldProtectApp() {
++        return mShouldProtectApp;
++    }
++
++    public boolean getShouldRedactNotification() {
++        return mShouldRedactNotification;
++    }
++
++    public boolean getHideFromLauncher() {
++        return mHideFromLauncher;
++    }
++
++    @Override
++    public int describeContents() {
++        return 0;
++    }
++
++    @Override
++    public void writeToParcel(final Parcel parcel, final int flags) {
++        parcel.writeString(mPackageName);
++        parcel.writeBoolean(mShouldProtectApp);
++        parcel.writeBoolean(mShouldRedactNotification);
++        parcel.writeBoolean(mHideFromLauncher);
++    }
++
++    @Override
++    @NonNull
++    public String toString() {
++        return "AppLockData[ packageName = " + mPackageName +
++            ", shouldProtectApp = " + mShouldProtectApp +
++            ", shouldRedactNotification = " + mShouldRedactNotification +
++            ", hideFromLauncher = " + mHideFromLauncher + " ]";
++    }
++}
+diff --git a/core/java/android/app/AppLockManager.java b/core/java/android/app/AppLockManager.java
+new file mode 100644
+index 000000000000..2fecb7260380
+--- /dev/null
++++ b/core/java/android/app/AppLockManager.java
+@@ -0,0 +1,281 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.app;
++
++import android.Manifest;
++import android.annotation.NonNull;
++import android.annotation.SystemApi;
++import android.annotation.SystemService;
++import android.annotation.RequiresPermission;
++import android.annotation.UserHandleAware;
++import android.content.Context;
++import android.os.RemoteException;
++
++import java.util.List;
++
++/**
++ * @hide
++ */
++@SystemService(Context.APP_LOCK_SERVICE)
++public final class AppLockManager {
++
++    /** @hide */
++    public static final long DEFAULT_TIMEOUT = 10 * 1000;
++
++    /** @hide */
++    public static final boolean DEFAULT_BIOMETRICS_ALLOWED = true;
++
++    /** @hide */
++    public static final boolean DEFAULT_PROTECT_APP = false;
++
++    /** @hide */
++    public static final boolean DEFAULT_REDACT_NOTIFICATION = false;
++
++    /** @hide */
++    public static final boolean DEFAULT_HIDE_IN_LAUNCHER = false;
++
++    /**
++     * Intent action for starting credential activity in SystemUI.
++     * @hide
++     */
++    public static final String ACTION_UNLOCK_APP = "android.app.action.UNLOCK_APP";
++
++    /**
++     * Intent extra to indicate whether usage of biometrics is allowed.
++     * @hide
++     */
++    public static final String EXTRA_ALLOW_BIOMETRICS = "android.app.AppLockManager.ALLOW_BIOMETRICS";
++
++    /**
++     * Intent extra for the name of the application to unlock.
++     * @hide
++     */
++    public static final String EXTRA_PACKAGE_LABEL = "android.app.AppLockManager.PACKAGE_LABEL";
++
++    private final Context mContext;
++    private final IAppLockManagerService mService;
++
++    /** @hide */
++    AppLockManager(Context context, IAppLockManagerService service) {
++        mContext = context;
++        mService = service;
++    }
++
++    /**
++     * Set whether app should be protected by app lock
++     * in locked state. Caller must hold {@link android.permission.MANAGE_APP_LOCK}.
++     *
++     * @param packageName the package name.
++     * @param shouldProtectApp true to hide notification content.
++     * @hide
++     */
++    @UserHandleAware
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    public void setShouldProtectApp(@NonNull String packageName, boolean shouldProtectApp) {
++        try {
++            mService.setShouldProtectApp(packageName, shouldProtectApp, mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * Get the current auto lock timeout.
++     *
++     * @param userId the user id given by the caller.
++     * @return the timeout in milliseconds if configuration for
++     *     current user exists, -1 otherwise.
++     * @hide
++     */
++    @UserHandleAware
++    public long getTimeout() {
++        try {
++            return mService.getTimeout(mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * Set auto lock timeout.
++     * Caller must hold {@link android.permission.MANAGE_APP_LOCK}.
++     *
++     * @param timeout the timeout in milliseconds. Must be >= 5.
++     * @param userId the user id given by the caller.
++     * @hide
++     */
++    @UserHandleAware
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    public void setTimeout(long timeout) {
++        try {
++            mService.setTimeout(timeout, mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * Get all the packages protected with app lock.
++     * Caller must hold {@link android.permission.MANAGE_APP_LOCK}.
++     *
++     * @return a unique list of {@link AppLockData} of the protected apps.
++     * @hide
++     */
++    @UserHandleAware
++    @NonNull
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    public List<AppLockData> getPackageData() {
++        try {
++            return mService.getPackageData(mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * Set whether notification content should be redacted for a package
++     * in locked state. Caller must hold {@link android.permission.MANAGE_APP_LOCK}.
++     *
++     * @param packageName the package name.
++     * @param shouldRedactNotification true to hide notification content.
++     * @hide
++     */
++    @UserHandleAware
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    public void setShouldRedactNotification(@NonNull String packageName, boolean shouldRedactNotification) {
++        try {
++            mService.setShouldRedactNotification(packageName, shouldRedactNotification, mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * Set whether to allow unlocking with biometrics.
++     * Caller must hold {@link android.permission.MANAGE_APP_LOCK}.
++     *
++     * @param biometricsAllowed whether to use biometrics.
++     * @hide
++     */
++    @UserHandleAware
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    public void setBiometricsAllowed(boolean biometricsAllowed) {
++        try {
++            mService.setBiometricsAllowed(biometricsAllowed, mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * Check whether biometrics is allowed for unlocking.
++     *
++     * @return true if biometrics will be used for unlocking, false otherwise.
++     * @hide
++     */
++    @UserHandleAware
++    public boolean isBiometricsAllowed() {
++        try {
++            return mService.isBiometricsAllowed(mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * Unlock a package following authentication with credentials.
++     * Caller must hold {@link android.permission.MANAGE_APP_LOCK}.
++     *
++     * @param packageName the name of the package to unlock.
++     * @hide
++     */
++    @UserHandleAware
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    public void unlockPackage(@NonNull String packageName) {
++        try {
++            mService.unlockPackage(packageName, mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * Hide or unhide an application from launcher.
++     * Caller must hold {@link android.permission.MANAGE_APP_LOCK}.
++     *
++     * @param packageName the name of the package to hide or unhide.
++     * @param hide whether to hide or not.
++     * @hide
++     */
++    @UserHandleAware
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    public void setPackageHidden(@NonNull String packageName, boolean hide) {
++        try {
++            mService.setPackageHidden(packageName, hide, mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * Get the list of applications hidden from launcher.
++     * Caller must hold {@link android.permission.MANAGE_APP_LOCK}.
++     *
++     * @return list of package names of the hidden apps.
++     * @hide
++     */
++    @UserHandleAware
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    @NonNull
++    public List<String> getHiddenPackages() {
++        try {
++            return mService.getHiddenPackages(mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * Check whether package is protected by app lock
++     *
++     * @return true if package is protected by app lock, false otherwise.
++     * @hide
++     */
++    @UserHandleAware
++    public boolean isPackageProtected(@NonNull String packageName) {
++        try {
++            return mService.isPackageProtected(packageName, mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * Check whether package is hidden by app lock
++     *
++     * @return true if package is hidden by app lock, false otherwise.
++     * @hide
++     */
++    @UserHandleAware
++    public boolean isPackageHidden(@NonNull String packageName) {
++        try {
++            return mService.isPackageHidden(packageName, mContext.getUserId());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++}
+diff --git a/core/java/android/app/IAppLockManagerService.aidl b/core/java/android/app/IAppLockManagerService.aidl
+new file mode 100644
+index 000000000000..6e14f4c86f17
+--- /dev/null
++++ b/core/java/android/app/IAppLockManagerService.aidl
+@@ -0,0 +1,50 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.app;
++
++import android.app.AppLockData;
++
++/**
++ * Interface for managing app lock.
++ * @hide
++ */
++interface IAppLockManagerService {
++
++    void setShouldProtectApp(in String packageName, in boolean secure, in int userId);
++
++    long getTimeout(in int userId);
++
++    void setTimeout(in long timeout, in int userId);
++
++    List<AppLockData> getPackageData(in int userId);
++
++    void setShouldRedactNotification(in String packageName, in boolean secure, in int userId);
++
++    void setBiometricsAllowed(in boolean biometricsAllowed, in int userId);
++
++    boolean isBiometricsAllowed(in int userId);
++
++    void unlockPackage(in String packageName, in int userId);
++
++    void setPackageHidden(in String packageName, boolean hide, in int userId);
++
++    List<String> getHiddenPackages(in int userId);
++
++    boolean isPackageProtected(in String packageName, in int userId);
++
++    boolean isPackageHidden(in String packageName, in int userId);
++}
+diff --git a/core/java/android/app/SystemServiceRegistry.java b/core/java/android/app/SystemServiceRegistry.java
+index cc0e7b5cb7fa..411051bb8ed1 100644
+--- a/core/java/android/app/SystemServiceRegistry.java
++++ b/core/java/android/app/SystemServiceRegistry.java
+@@ -2026,6 +2026,18 @@ public final class SystemServiceRegistry {
+                     }
+                 });
+ 
++        registerService(Context.APP_LOCK_SERVICE, AppLockManager.class,
++                new CachedServiceFetcher<AppLockManager>() {
++                    @Override
++                    public AppLockManager createService(ContextImpl ctx)
++                            throws ServiceNotFoundException {
++                        IBinder binder = ServiceManager.getServiceOrThrow(
++                                Context.APP_LOCK_SERVICE);
++                        return new AppLockManager(ctx,
++                            IAppLockManagerService.Stub.asInterface(binder));
++                    }
++                });
++
+         // DO NOT do a flag check like this unless the flag is read-only.
+         // (because this code is executed during preload in zygote.)
+         // If the flag is mutable, the check should be inside CachedServiceFetcher.
+diff --git a/core/java/android/content/Context.java b/core/java/android/content/Context.java
+index f0bd86d90e1b..66428bb5b15b 100644
+--- a/core/java/android/content/Context.java
++++ b/core/java/android/content/Context.java
+@@ -52,6 +52,7 @@ import android.annotation.UiContext;
+ import android.annotation.UserIdInt;
+ import android.app.Activity;
+ import android.app.ActivityManager;
++import android.app.AppLockManager;
+ import android.app.BroadcastOptions;
+ import android.app.GameManager;
+ import android.app.GrammaticalInflectionManager;
+@@ -7017,6 +7018,14 @@ public abstract class Context {
+      */
+     public static final String DISPLAY_HASH_SERVICE = "display_hash";
+ 
++    /**
++     * {@link AppLockManager}.
++     *
++     * @see #getSystemService(String)
++     * @hide
++     */
++    public static final String APP_LOCK_SERVICE = "app_lock";
++
+     /**
+      * Use with {@link #getSystemService(String)} to retrieve a
+      * {@link android.app.LocaleManager}.
+diff --git a/core/java/android/service/notification/StatusBarNotification.java b/core/java/android/service/notification/StatusBarNotification.java
+index 53b4ec769bb7..8165415d33cf 100644
+--- a/core/java/android/service/notification/StatusBarNotification.java
++++ b/core/java/android/service/notification/StatusBarNotification.java
+@@ -76,10 +76,13 @@ public class StatusBarNotification implements Parcelable {
+     private final Map<Integer, Context> mContextForDisplayId =
+             Collections.synchronizedMap(new ArrayMap<>());
+ 
++    private boolean mIsContentSecure;
++
+     /** @hide */
+     public StatusBarNotification(String pkg, String opPkg, int id,
+             String tag, int uid, int initialPid, Notification notification, UserHandle user,
+-            String overrideGroupKey, long postTime) {
++            String overrideGroupKey, long postTime,
++            boolean isContentSecure) {
+         if (pkg == null) throw new NullPointerException();
+         if (notification == null) throw new NullPointerException();
+ 
+@@ -95,6 +98,7 @@ public class StatusBarNotification implements Parcelable {
+         this.overrideGroupKey = overrideGroupKey;
+         this.key = key();
+         this.groupKey = groupKey();
++        mIsContentSecure = isContentSecure;
+     }
+ 
+     /**
+@@ -142,6 +146,7 @@ public class StatusBarNotification implements Parcelable {
+         }
+         this.key = key();
+         this.groupKey = groupKey();
++        mIsContentSecure = in.readBoolean();
+     }
+ 
+     /**
+@@ -242,6 +247,7 @@ public class StatusBarNotification implements Parcelable {
+         } else {
+             out.writeInt(0);
+         }
++        out.writeBoolean(mIsContentSecure);
+     }
+ 
+     public int describeContents() {
+@@ -283,7 +289,8 @@ public class StatusBarNotification implements Parcelable {
+     public StatusBarNotification cloneShallow(Notification notification) {
+         StatusBarNotification result = new StatusBarNotification(this.pkg, this.opPkg,
+                 this.id, this.tag, this.uid, this.initialPid,
+-                notification, this.user, this.overrideGroupKey, this.postTime);
++                notification, this.user, this.overrideGroupKey,
++                this.postTime, mIsContentSecure);
+         result.setInstanceId(this.mInstanceId);
+         return result;
+     }
+@@ -593,4 +600,24 @@ public class StatusBarNotification implements Parcelable {
+         return logTag.substring(0, MAX_LOG_TAG_LENGTH - hash.length() - 1) + "-"
+                 + hash;
+     }
++
++    /**
++     * Set whether the notification content is secure.
++     *
++     * @param isContentSecure whether the content is secure.
++     * @hide
++     */
++    public void setIsContentSecure(boolean isContentSecure) {
++        mIsContentSecure = isContentSecure;
++    }
++
++    /**
++     * Check whether the notification content is secure.
++     *
++     * @return true if content is secure, false otherwise.
++     * @hide
++     */
++    public boolean getIsContentSecure() {
++        return mIsContentSecure;
++    }
+ }
+diff --git a/core/java/com/android/internal/util/clover/CloverUtils.java b/core/java/com/android/internal/util/clover/CloverUtils.java
+new file mode 100644
+index 000000000000..6667515214a6
+--- /dev/null
++++ b/core/java/com/android/internal/util/clover/CloverUtils.java
+@@ -0,0 +1,101 @@
++/*
++ * Copyright (C) 2017-2024 crDroid Android Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.internal.util.clover;
++
++import android.content.Context;
++import android.content.Intent;
++import android.content.pm.ApplicationInfo;
++import android.content.pm.PackageInfo;
++import android.content.pm.PackageManager;
++import android.content.pm.ResolveInfo;
++import android.os.PowerManager;
++import android.os.SystemClock;
++import android.os.SystemProperties;
++
++import java.util.ArrayList;
++import java.util.List;
++
++public class CloverUtils {
++
++    public static boolean isPackageInstalled(Context context, String packageName, boolean ignoreState) {
++        if (packageName != null) {
++            try {
++                PackageInfo pi = context.getPackageManager().getPackageInfo(packageName, 0);
++                if (!pi.applicationInfo.enabled && !ignoreState) {
++                    return false;
++                }
++            } catch (PackageManager.NameNotFoundException e) {
++                return false;
++            }
++        }
++        return true;
++    }
++
++    public static boolean isPackageInstalled(Context context, String packageName) {
++        return isPackageInstalled(context, packageName, true);
++    }
++
++    public static boolean isPackageEnabled(Context context, String packageName) {
++        try {
++            PackageInfo pi = context.getPackageManager().getPackageInfo(packageName, 0);
++            return pi.applicationInfo.enabled;
++        } catch (PackageManager.NameNotFoundException notFound) {
++            return false;
++        }
++    }
++
++    public static List<String> launchablePackages(Context context) {
++        List<String> list = new ArrayList<>();
++
++        Intent filter = new Intent(Intent.ACTION_MAIN, null);
++        filter.addCategory(Intent.CATEGORY_LAUNCHER);
++
++        List<ResolveInfo> apps = context.getPackageManager().queryIntentActivities(filter,
++                PackageManager.GET_META_DATA);
++
++        int numPackages = apps.size();
++        for (int i = 0; i < numPackages; i++) {
++            ResolveInfo app = apps.get(i);
++            list.add(app.activityInfo.packageName);
++        }
++
++        return list;
++    }
++
++    public static void switchScreenOff(Context ctx) {
++        PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
++        if (pm!= null) {
++            pm.goToSleep(SystemClock.uptimeMillis());
++        }
++    }
++
++    public static boolean deviceHasFlashlight(Context ctx) {
++        return ctx.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
++    }
++
++    public static boolean hasNavbarByDefault(Context context) {
++        boolean needsNav = context.getResources().getBoolean(
++                com.android.internal.R.bool.config_showNavigationBar);
++        String navBarOverride = SystemProperties.get("qemu.hw.mainkeys");
++        if ("1".equals(navBarOverride)) {
++            needsNav = false;
++        } else if ("0".equals(navBarOverride)) {
++            needsNav = true;
++        }
++        return needsNav;
++    }
++}
+diff --git a/core/res/AndroidManifest.xml b/core/res/AndroidManifest.xml
+index fc977e3c721a..a23290d69870 100644
+--- a/core/res/AndroidManifest.xml
++++ b/core/res/AndroidManifest.xml
+@@ -875,6 +875,10 @@
+     <protected-broadcast android:name="android.app.action.DYNAMIC_BUNDLE_MODIFIED" />
+     <protected-broadcast android:name="android.app.action.BRIDGED_NOTIFICATION_PREFERENCES" />
+ 
++    <!-- App lock -->
++    <protected-broadcast android:name="com.android.server.app.AppLockManagerService.APP_LOCK_TIMEOUT" />
++    <protected-broadcast android:name="android.app.action.UNLOCK_APP" />
++
+     <!-- ====================================================================== -->
+     <!--                          RUNTIME PERMISSIONS                           -->
+     <!-- ====================================================================== -->
+@@ -10594,6 +10598,10 @@
+         android:name="android.permission.BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE"
+         android:protectionLevel="signature"
+         android:featureFlag="com.android.internal.telephony.flags.message_promotion" />
++    <!-- Allows an application to manage app lock
++         @hide -->
++    <permission android:name="android.permission.MANAGE_APP_LOCK"
++                android:protectionLevel="signature|privileged" />
+ 
+     <!-- Attribution for Geofencing service. -->
+     <attribution android:tag="GeofencingService" android:label="@string/geofencing_service"/>
+diff --git a/core/res/res/values/custom_config.xml b/core/res/res/values/custom_config.xml
+index 91a5a9a22145..a14ae1e8ea6d 100644
+--- a/core/res/res/values/custom_config.xml
++++ b/core/res/res/values/custom_config.xml
+@@ -181,4 +181,8 @@
+     <!-- Whether OverScroller reports flings to the device's "flingboost" service,
+          so it can hold a CPU boost for the length of a fling -->
+     <bool name="config_flingBoost">false</bool>
++
++    <!-- List of system apps that are allowed to be locked with app lock.
++         Use with extreme caution. -->
++    <string-array name="config_appLockAllowedSystemApps" translatable="false" />
+ </resources>
+diff --git a/core/res/res/values/custom_strings.xml b/core/res/res/values/custom_strings.xml
+index e196b8676d44..b1f318120f71 100644
+--- a/core/res/res/values/custom_strings.xml
++++ b/core/res/res/values/custom_strings.xml
+@@ -57,4 +57,7 @@
+     <string name="megabitspersecond_short">Mb/s</string>
+     <string name="kilobytespersecond_short">kB/s</string>
+     <string name="megabytespersecond_short">MB/s</string>
++
++    <!-- App lock -->
++    <string name="unlock_application">Unlock %1$s</string>
+ </resources>
+diff --git a/core/res/res/values/custom_symbols.xml b/core/res/res/values/custom_symbols.xml
+index 2abef82e807a..4afbefc52e1e 100644
+--- a/core/res/res/values/custom_symbols.xml
++++ b/core/res/res/values/custom_symbols.xml
+@@ -142,4 +142,8 @@
+ 
+     <!-- Whether OverScroller reports flings to the "flingboost" service -->
+     <java-symbol type="bool" name="config_flingBoost" id="0x0111f002" />
++
++   <!-- App lock -->
++   <java-symbol type="string" name="unlock_application" />
++   <java-symbol type="array" name="config_appLockAllowedSystemApps" />
+ </resources>
+diff --git a/data/etc/com.android.settings.xml b/data/etc/com.android.settings.xml
+index 2456d02ac8eb..ea0dab9a6fc5 100644
+--- a/data/etc/com.android.settings.xml
++++ b/data/etc/com.android.settings.xml
+@@ -28,6 +28,7 @@
+         <permission name="android.permission.FORCE_STOP_PACKAGES"/>
+         <permission name="android.permission.LOCAL_MAC_ADDRESS"/>
+         <permission name="android.permission.LOG_COMPAT_CHANGE" />
++        <permission name="android.permission.MANAGE_APP_LOCK" />
+         <permission name="android.permission.MANAGE_DEBUGGING"/>
+         <permission name="android.permission.MANAGE_DEVICE_ADMINS"/>
+         <permission name="android.permission.MANAGE_FINGERPRINT"/>
+diff --git a/packages/SystemUI/multivalentTests/src/com/android/systemui/statusbar/notification/collection/TargetSdkResolverTest.kt b/packages/SystemUI/multivalentTests/src/com/android/systemui/statusbar/notification/collection/TargetSdkResolverTest.kt
+index d4cd09e6d3d5..84f05998f0e7 100644
+--- a/packages/SystemUI/multivalentTests/src/com/android/systemui/statusbar/notification/collection/TargetSdkResolverTest.kt
++++ b/packages/SystemUI/multivalentTests/src/com/android/systemui/statusbar/notification/collection/TargetSdkResolverTest.kt
+@@ -111,7 +111,7 @@ class TargetSdkResolverTest : SysuiTestCase() {
+ 
+     private fun createSbn(notification: Notification) = StatusBarNotification(
+             PACKAGE, "opPkg", 0, "tag", 0, 0,
+-            notification, UserHandle(USER_ID), "", 0
++            notification, UserHandle(USER_ID), "", 0, false /* isContentSecure */
+     )
+ 
+     private fun createNotificationEntry(sbn: StatusBarNotification) =
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/NotificationLockscreenUserManagerImpl.java b/packages/SystemUI/src/com/android/systemui/statusbar/NotificationLockscreenUserManagerImpl.java
+index 1358a9a863f5..c8acc7d7fe48 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/NotificationLockscreenUserManagerImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/NotificationLockscreenUserManagerImpl.java
+@@ -739,7 +739,8 @@ public class NotificationLockscreenUserManagerImpl implements
+ 
+         boolean notificationRequestsRedaction =
+                 ent.isNotificationVisibilityPrivate();
+-        boolean userForcesRedaction = packageHasVisibilityOverride(ent.getSbn().getKey());
++        boolean userForcesRedaction = packageHasVisibilityOverride(ent.getSbn().getKey()) ||
++                ent.getSbn().getIsContentSecure();
+ 
+         if (userForcesRedaction) {
+             return REDACTION_TYPE_PUBLIC;
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/RemoteInputNotificationRebuilder.java b/packages/SystemUI/src/com/android/systemui/statusbar/RemoteInputNotificationRebuilder.java
+index 7bffacf23180..4c062629bbcc 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/RemoteInputNotificationRebuilder.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/RemoteInputNotificationRebuilder.java
+@@ -171,8 +171,7 @@ public class RemoteInputNotificationRebuilder {
+                 newNotification,
+                 sbn.getUser(),
+                 sbn.getOverrideGroupKey(),
+-                sbn.getPostTime());
++                sbn.getPostTime(),
++                sbn.getIsContentSecure());
+     }
+-
+-
+ }
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/coordinator/SensitiveContentCoordinator.kt b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/coordinator/SensitiveContentCoordinator.kt
+index a73e671b4339..c280400f108d 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/coordinator/SensitiveContentCoordinator.kt
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/coordinator/SensitiveContentCoordinator.kt
+@@ -211,10 +211,11 @@ constructor(
+                 screenshareNotificationHiding() &&
+                     sensitiveNotificationProtectionController.shouldProtectNotification(entry)
+ 
+-            val needsRedaction =
+-                lockscreenUserManager.getRedactionType(entry) != REDACTION_TYPE_NONE
++            val isSecure = entry.sbn.isContentSecure
++            val needsRedaction = isSecure || lockscreenUserManager.getRedactionType(entry) != REDACTION_TYPE_NONE
+             val isSensitive = userPublic && needsRedaction
+-            entry.setSensitive(isSensitive || shouldProtectNotification, deviceSensitive)
++            entry.setSensitive(isSensitive || shouldProtectNotification, isSecure || deviceSensitive)
++            entry.row.setForceHideContents(isSecure)
+             if (screenshareNotificationHiding()) {
+                 entry.row?.setPublicExpanderVisible(!shouldProtectNotification)
+             }
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotifUiAdjustmentProvider.kt b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotifUiAdjustmentProvider.kt
+index a2fa00112f54..8598b2a3be17 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotifUiAdjustmentProvider.kt
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotifUiAdjustmentProvider.kt
+@@ -144,9 +144,11 @@ constructor(
+             redactionType =
+                 if (
+                     screenshareNotificationHiding() &&
+-                        sensitiveNotifProtectionController.shouldProtectNotification(entry)
++                    sensitiveNotifProtectionController.shouldProtectNotification(entry)
+                 ) {
+                     REDACTION_TYPE_PUBLIC
++                } else if (entry.sbn.isContentSecure) {
++                    REDACTION_TYPE_PUBLIC
+                 } else {
+                     lockscreenUserManager.getRedactionType(entry)
+                 },
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java
+index b45897a46bf0..5244d260e8c1 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java
+@@ -17,6 +17,7 @@
+ package com.android.systemui.statusbar.notification.collection.inflation;
+ 
+ import static com.android.systemui.statusbar.NotificationLockscreenUserManager.REDACTION_TYPE_NONE;
++import static com.android.systemui.statusbar.NotificationLockscreenUserManager.REDACTION_TYPE_PUBLIC;
+ import static com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.FLAG_CONTENT_VIEW_CONTRACTED;
+ import static com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.FLAG_CONTENT_VIEW_EXPANDED;
+ import static com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.FLAG_CONTENT_VIEW_PUBLIC;
+@@ -247,7 +248,8 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+         params.requireContentViews(FLAG_CONTENT_VIEW_CONTRACTED);
+         params.requireContentViews(FLAG_CONTENT_VIEW_EXPANDED);
+         params.setUseMinimized(isMinimized);
+-        int redactionType = inflaterParams.getRedactionType();
++        int redactionType = entry.getSbn().getIsContentSecure() ?
++            REDACTION_TYPE_PUBLIC : inflaterParams.getRedactionType();
+ 
+         params.setRedactionType(redactionType);
+         if (redactionType != REDACTION_TYPE_NONE) {
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java
+index 05c6bffd289f..136182959a5b 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java
+@@ -487,6 +487,9 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+             mDismissButtonTargetVisibilityListeners = new ListenerSet<>();
+     @RedactionType
+     private int mRedactionType = REDACTION_TYPE_NONE;
++
++    private boolean mForceHideContents = false;
++
+     public NotificationContentView[] getLayouts() {
+         return Arrays.copyOf(mLayouts, mLayouts.length);
+     }
+@@ -2764,8 +2767,8 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+     }
+ 
+     private void updateChildrenVisibility() {
+-        boolean hideContentWhileLaunching = mExpandAnimationRunning && mGuts != null
+-                && mGuts.isExposed();
++        boolean hideContentWhileLaunching = mForceHideContents || (mExpandAnimationRunning && mGuts != null
++                && mGuts.isExposed());
+         mPrivateLayout.setVisibility(!mShowingPublic && !mIsSummaryWithChildren
+                 && !hideContentWhileLaunching ? VISIBLE : INVISIBLE);
+         if (mChildrenContainer != null) {
+@@ -2955,6 +2958,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+     }
+ 
+     public boolean isExpandable() {
++        if (mForceHideContents) return false;
+         if (mIsSummaryWithChildren && !shouldShowPublic()) {
+             return !mChildrenExpanded;
+         }
+@@ -3150,6 +3154,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+ 
+     @Override
+     public int getIntrinsicHeight() {
++        if (mForceHideContents) return getCollapsedHeight();
+         if (isUserSwipingToExpandRow()) {
+             return getActualHeight();
+         }
+@@ -3483,7 +3488,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+             } else {
+                 mLogger.logSkipResetAllContentAlphas(mLoggingKey);
+             }
+-            mPublicLayout.setVisibility(mShowingPublic ? View.VISIBLE : View.INVISIBLE);
++            mPublicLayout.setVisibility((mShowingPublic || mForceHideContents) ? VISIBLE : INVISIBLE);
+             updateChildrenVisibility();
+         } else {
+             animateShowingPublic(delay, duration, mShowingPublic);
+@@ -3574,7 +3579,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+     }
+ 
+     private boolean shouldShowPublic() {
+-        return mSensitive && mHideSensitiveForIntrinsicHeight;
++        return mForceHideContents || (mSensitive && mHideSensitiveForIntrinsicHeight);
+     }
+ 
+     public void makeActionsVisibile() {
+@@ -4341,6 +4346,13 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+         }
+     }
+ 
++    public void setForceHideContents(boolean forceHide) {
++        if (mForceHideContents == forceHide) return;
++        mForceHideContents = forceHide;
++        updateChildrenVisibility();
++        onNotificationUpdated();
++    }
++
+     private static class NotificationViewState extends ExpandableViewState {
+ 
+         @Override
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarNotificationPresenter.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarNotificationPresenter.java
+index 5e03bc5f5f23..6a4e07c1ba0d 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarNotificationPresenter.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarNotificationPresenter.java
+@@ -322,7 +322,7 @@ class StatusBarNotificationPresenter implements NotificationPresenter, CommandQu
+ 
+         @Override
+         public boolean suppressAwakeInterruptions(NotificationEntry entry) {
+-            return isDeviceInVrMode();
++            return isDeviceInVrMode() || entry.getSbn().getIsContentSecure();
+         }
+ 
+         @Override
+diff --git a/services/Android.bp b/services/Android.bp
+index 1cf0712a5454..c98309c4a186 100644
+--- a/services/Android.bp
++++ b/services/Android.bp
+@@ -117,6 +117,7 @@ filegroup {
+     name: "services-non-updatable-sources",
+     srcs: [
+         ":incremental_aidl",
++        ":services.applock-sources",
+         ":services.core-aidl-sources",
+         ":services.core-sources",
+         ":services.core-sources-am-wm",
+@@ -319,6 +320,7 @@ java_library {
+ 
+     // The convention is to name each service module 'services.$(module_name)'
+     static_libs: [
++        "services.applock",
+         "services.core",
+         "services.accessibility",
+         "services.aiseal",
+diff --git a/services/applock/Android.bp b/services/applock/Android.bp
+new file mode 100644
+index 000000000000..a935f28a7b7a
+--- /dev/null
++++ b/services/applock/Android.bp
+@@ -0,0 +1,29 @@
++package {
++    // See: http://go/android-license-faq
++    // A large-scale-change added 'default_applicable_licenses' to import
++    // all of the 'license_kinds' from "frameworks_base_license"
++    // to get the below license kinds:
++    //   SPDX-license-identifier-Apache-2.0
++    default_applicable_licenses: ["frameworks_base_license"],
++}
++
++filegroup {
++    name: "services.applock-sources",
++    srcs: [
++        "java/**/*.java",
++        "java/**/*.kt"
++    ],
++    path: "java",
++    visibility: ["//frameworks/base/services"],
++}
++
++java_library_static {
++    name: "services.applock",
++    defaults: ["platform_service_defaults"],
++    srcs: [":services.applock-sources"],
++    libs: ["services.core"],
++    static_libs: [
++        "kotlinx_coroutines"
++    ],
++    jarjar_rules: "jarjar-rules.txt",
++}
+diff --git a/services/applock/jarjar-rules.txt b/services/applock/jarjar-rules.txt
+new file mode 100644
+index 000000000000..d63a31e8befd
+--- /dev/null
++++ b/services/applock/jarjar-rules.txt
+@@ -0,0 +1,3 @@
++rule kotlin.** com.android.server.jarjar.@0
++rule kotlinx.** com.android.server.jarjar.@0
++
+diff --git a/services/applock/java/com/android/server/app/AppLockConfig.kt b/services/applock/java/com/android/server/app/AppLockConfig.kt
+new file mode 100644
+index 000000000000..e32d0160464f
+--- /dev/null
++++ b/services/applock/java/com/android/server/app/AppLockConfig.kt
+@@ -0,0 +1,426 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.app
++
++import android.app.AppLockData
++import android.app.AppLockManager.DEFAULT_BIOMETRICS_ALLOWED
++import android.app.AppLockManager.DEFAULT_HIDE_IN_LAUNCHER
++import android.app.AppLockManager.DEFAULT_PROTECT_APP
++import android.app.AppLockManager.DEFAULT_REDACT_NOTIFICATION
++import android.app.AppLockManager.DEFAULT_TIMEOUT
++import android.os.FileUtils
++import android.os.FileUtils.S_IRWXU
++import android.os.FileUtils.S_IRWXG
++import android.util.ArrayMap
++import android.util.Slog
++
++import java.io.File
++import java.io.IOException
++
++import org.json.JSONArray
++import org.json.JSONException
++import org.json.JSONObject
++
++private const val APP_LOCK_DIR_NAME = "app_lock"
++private const val APP_LOCK_CONFIG_FILE = "app_lock_config.json"
++
++private const val CURRENT_VERSION = 3
++
++// Only in version 0
++private const val KEY_PACKAGES = "packages"
++private const val KEY_SECURE_NOTIFICATION = "secure_notification"
++
++// From version 1 and up. Non existent version key
++// is considered as version 0
++private const val KEY_VERSION = "version"
++private const val KEY_TIMEOUT = "timeout"
++private const val KEY_APP_LOCK_DATA_LIST = "app_lock_data_list"
++private const val KEY_PACKAGE_NAME = "package_name"
++private const val KEY_PROTECT_APP = "protect_app"
++private const val KEY_REDACT_NOTIFICATION = "redact_notification"
++private const val KEY_BIOMETRICS_ALLOWED = "biometrics_allowed"
++
++// From version 2 and up.
++private const val KEY_HIDE_FROM_LAUNCHER = "hide_from_launcher"
++
++/**
++ * Container for app lock configuration. Also handles logic of reading
++ * and writing configuration to disk, serialized as a JSON file.
++ * All operations must be synchronized with an external lock.
++ *
++ * @hide
++ */
++internal class AppLockConfig(dataDir: File) {
++
++    private val appLockDir = File(dataDir, APP_LOCK_DIR_NAME)
++    private val appLockConfigFile = File(appLockDir, APP_LOCK_CONFIG_FILE)
++
++    private val appLockDataMap = ArrayMap<String, AppLockData>()
++
++    var appLockTimeout: Long = DEFAULT_TIMEOUT
++    var biometricsAllowed = DEFAULT_BIOMETRICS_ALLOWED
++
++    init {
++        appLockDir.mkdirs()
++        FileUtils.setPermissions(appLockDir, S_IRWXU or S_IRWXG, -1, -1)
++    }
++
++    /**
++     * Add an application to [appLockDataMap].
++     *
++     * @param packageName the package name of the application.
++     * @return true if package was added, false if already exists.
++     */
++    fun addPackageToMap(packageName: String): Boolean {
++        return if (!appLockDataMap.containsKey(packageName)) {
++            appLockDataMap[packageName] =
++                AppLockData(
++                    packageName,
++                    DEFAULT_PROTECT_APP,
++                    DEFAULT_REDACT_NOTIFICATION,
++                    DEFAULT_HIDE_IN_LAUNCHER
++                )
++            true
++        } else {
++            false
++        }
++    }
++
++    /**
++     * Remove an application from [appLockDataMap].
++     *
++     * @param packageName the package name of the application.
++     * @return true if package was removed, false otherwise.
++     */
++    fun removePackageFromMap(packageName: String): Boolean {
++        return if (appLockDataMap.containsKey(packageName)) {
++            appLockDataMap.remove(packageName) != null
++            true
++        } else {
++            false
++        }
++    }
++
++    /**
++     * Set notifications as protected or not for an application
++     * in [appLockDataMap].
++     *
++     * @param packageName the package name of the application.
++     * @param shouldProtectApp whether to protect app or not.
++     * @return true if config was changed, false otherwise.
++     */
++    fun setShouldProtectApp(packageName: String, shouldProtectApp: Boolean): Boolean {
++        addPackageToMap(packageName)
++        return appLockDataMap[packageName]?.let {
++            if (it.shouldProtectApp != shouldProtectApp) {
++                appLockDataMap[packageName] = AppLockData(
++                    it.packageName,
++                    shouldProtectApp,
++                    it.shouldRedactNotification,
++                    it.hideFromLauncher
++                )
++                true
++            } else {
++                false
++            }
++        } ?: run {
++            Slog.e(TAG, "Attempt to protect app for package $packageName that is not in list")
++            false
++        }
++    }
++
++    /**
++     * Check whether app is protected or not for an application
++     * in [appLockDataMap].
++     *
++     * @param packageName the package name of the application.
++     * @return true if app is protected by app lock,
++     *     false otherwise.
++     */
++    fun shouldProtectApp(packageName: String): Boolean {
++        return appLockDataMap[packageName]?.shouldProtectApp == true
++    }
++
++    /**
++     * Get all the packages protected with app lock.
++     *
++     * @return a unique list of package names.
++     */
++    fun getAppLockDataList(): List<AppLockData> {
++        return appLockDataMap.values.toList()
++    }
++
++    /**
++     * Get all the packages protected with app lock.
++     *
++     * @return a unique list of package names.
++     */
++    fun getAppLockAppList(): List<String> {
++        return appLockDataMap.keys.toList()
++    }
++
++    /**
++     * Get all the packages protected with app lock.
++     *
++     * @return a unique list of package names.
++     */
++    fun getAppLockHiddenAppList(): List<String> {
++        return appLockDataMap.filterValues { it.hideFromLauncher }.keys.toList()
++    }
++
++    /**
++     * Set notifications as protected or not for an application
++     * in [appLockDataMap].
++     *
++     * @param packageName the package name of the application.
++     * @param shouldRedactNotification whether to redact notification or not.
++     * @return true if config was changed, false otherwise.
++     */
++    fun setShouldRedactNotification(packageName: String, shouldRedactNotification: Boolean): Boolean {
++        addPackageToMap(packageName)
++        return appLockDataMap[packageName]?.let {
++            if (it.shouldRedactNotification != shouldRedactNotification) {
++                appLockDataMap[packageName] = AppLockData(
++                    it.packageName,
++                    it.shouldProtectApp,
++                    shouldRedactNotification,
++                    it.hideFromLauncher
++                )
++                true
++            } else {
++                false
++            }
++        } ?: run {
++            Slog.e(TAG, "Attempt to redact notifications for package $packageName that is not in list")
++            false
++        }
++    }
++
++    /**
++     * Check whether notifications are protected or not for an application
++     * in [appLockDataMap].
++     *
++     * @param packageName the package name of the application.
++     * @return true if notification contents are redacted in app locked state,
++     *     false otherwise.
++     */
++    fun shouldRedactNotification(packageName: String): Boolean {
++        return appLockDataMap[packageName]?.shouldRedactNotification == true
++    }
++
++    /**
++     * Mark an application as hidden from launcher in [appLockDataMap].
++     *
++     * @param packageName the package name of the application.
++     * @param hide the parameter value in [AppLockData].
++     * @return true if hidden state was changed, false otherwise.
++     */
++    fun hidePackage(packageName: String, hide: Boolean): Boolean {
++        addPackageToMap(packageName)
++        return appLockDataMap[packageName]?.let {
++            if (it.hideFromLauncher != hide) {
++                appLockDataMap[packageName] = AppLockData(
++                    it.packageName,
++                    it.shouldProtectApp,
++                    it.shouldRedactNotification,
++                    hide
++                )
++                true
++            } else {
++                false
++            }
++        } ?: run {
++            Slog.e(TAG, "Attempt to hide app for package $packageName that is not in list")
++            false
++        }
++    }
++
++    /**
++     * Check whether app is hidden in launcher or not for an application
++     * in [appLockDataMap].
++     *
++     * @param packageName the package name of the application.
++     * @return true if app is hidden in launcher by app lock,
++     *     false otherwise.
++     */
++    fun shouldHideApp(packageName: String): Boolean {
++        return appLockDataMap[packageName]?.hideFromLauncher == true
++    }
++
++    /**
++     * Parse contents from [appLockConfigFile].
++     */
++    fun read() {
++        reset()
++        if (!appLockConfigFile.isFile) {
++            Slog.i(TAG, "No configuration saved")
++            return
++        }
++        try {
++            appLockConfigFile.inputStream().bufferedReader().use {
++                val rootObject = JSONObject(it.readText())
++
++                val version = rootObject.optInt(KEY_VERSION, 0)
++                if (version != CURRENT_VERSION) {
++                    migrateData(rootObject, version)
++                }
++
++                appLockTimeout = rootObject.optLong(KEY_TIMEOUT, DEFAULT_TIMEOUT)
++                biometricsAllowed = rootObject.optBoolean(KEY_BIOMETRICS_ALLOWED, DEFAULT_BIOMETRICS_ALLOWED)
++                val appLockDataList = rootObject.optJSONArray(KEY_APP_LOCK_DATA_LIST) ?: return@use
++                for (i in 0 until appLockDataList.length()) {
++                    val appLockData = appLockDataList.getJSONObject(i)
++                    val packageName = appLockData.getString(KEY_PACKAGE_NAME)
++                    appLockDataMap[packageName] = AppLockData(
++                        packageName,
++                        appLockData.getBoolean(KEY_PROTECT_APP),
++                        appLockData.getBoolean(KEY_REDACT_NOTIFICATION),
++                        appLockData.getBoolean(KEY_HIDE_FROM_LAUNCHER)
++                    )
++                }
++            }
++        } catch(e: IOException) {
++            Slog.wtf(TAG, "Failed to read config file", e)
++        } catch(e: JSONException) {
++            Slog.wtf(TAG, "Failed to parse config file", e)
++        }
++        logD {
++            "readConfig: data = $appLockDataMap, " +
++            "timeout = $appLockTimeout, " +
++            "biometricsAllowed = $biometricsAllowed"
++        }
++    }
++
++    private fun reset() {
++        appLockDataMap.clear()
++        appLockTimeout = DEFAULT_TIMEOUT
++        biometricsAllowed = DEFAULT_BIOMETRICS_ALLOWED
++    }
++
++    private fun migrateData(jsonData: JSONObject, dataVersion: Int) {
++        Slog.i(TAG, "Migrating data from version $dataVersion")
++        when (dataVersion) {
++            0 -> {
++                val packageObject = jsonData.remove(KEY_PACKAGES) as? JSONObject
++                if (packageObject != null) {
++                    val appLockDataList = JSONArray()
++                    packageObject.keys().forEach { pkg ->
++                        val isSecure = packageObject.getJSONObject(pkg)
++                            .optBoolean(KEY_SECURE_NOTIFICATION, DEFAULT_REDACT_NOTIFICATION)
++                        appLockDataList.put(
++                            JSONObject()
++                                .put(KEY_PACKAGE_NAME, pkg)
++                                .put(KEY_REDACT_NOTIFICATION, isSecure)
++                        )
++                    }
++                    jsonData.put(KEY_APP_LOCK_DATA_LIST, appLockDataList)
++                }
++            }
++            1 -> {
++                val appLockDataList = jsonData.optJSONArray(KEY_APP_LOCK_DATA_LIST)
++                if (appLockDataList != null) {
++                    val size = appLockDataList.length()
++                    if (size > 0) {
++                        val backupList = mutableListOf<JSONObject>()
++                        for (i in (size - 1)..0) {
++                            val appData = appLockDataList.getJSONObject(i)
++                                .put(KEY_HIDE_FROM_LAUNCHER, DEFAULT_HIDE_IN_LAUNCHER)
++                            backupList.add(appData)
++                            appLockDataList.remove(i)
++                        }
++                        backupList.forEach {
++                            appLockDataList.put(it)
++                        }
++                        jsonData.put(KEY_APP_LOCK_DATA_LIST, appLockDataList)
++                    }
++                }
++            }
++            2 -> {
++                val appLockDataList = jsonData.optJSONArray(KEY_APP_LOCK_DATA_LIST)
++                if (appLockDataList != null) {
++                    val size = appLockDataList.length()
++                    if (size > 0) {
++                        val backupList = mutableListOf<JSONObject>()
++                        for (i in (size - 1)..0) {
++                            var isProtect = DEFAULT_PROTECT_APP
++                            if (appLockDataList.getJSONObject(i).has(KEY_PROTECT_APP)) {
++                                isProtect = appLockDataList.getJSONObject(i)
++                                    .getBoolean(KEY_PROTECT_APP)
++                            }
++                            val appData = appLockDataList.getJSONObject(i)
++                                .put(KEY_PROTECT_APP, isProtect)
++                            backupList.add(appData)
++                            appLockDataList.remove(i)
++                        }
++                        backupList.forEach {
++                            appLockDataList.put(it)
++                        }
++                        jsonData.put(KEY_APP_LOCK_DATA_LIST, appLockDataList)
++                    }
++                }
++            }
++            else -> throw IllegalArgumentException("Unknown data version $dataVersion")
++        }
++        val nextVersion = dataVersion + 1
++        if (nextVersion != CURRENT_VERSION) {
++            migrateData(jsonData, nextVersion)
++        }
++    }
++
++    /**
++     * Write contents to [appLockConfigFile].
++     */
++    fun write() {
++        logD {
++            "Writing data to file"
++        }
++        val rootObject = JSONObject()
++        try {
++            rootObject.put(KEY_VERSION, CURRENT_VERSION)
++            rootObject.put(KEY_TIMEOUT, appLockTimeout)
++            rootObject.put(KEY_BIOMETRICS_ALLOWED, biometricsAllowed)
++            rootObject.put(
++                KEY_APP_LOCK_DATA_LIST,
++                JSONArray(
++                    appLockDataMap.values.map {
++                        JSONObject().apply {
++                            put(KEY_PACKAGE_NAME, it.packageName)
++                            put(KEY_PROTECT_APP, it.shouldProtectApp)
++                            put(KEY_REDACT_NOTIFICATION, it.shouldRedactNotification)
++                            put(KEY_HIDE_FROM_LAUNCHER, it.hideFromLauncher)
++                        }
++                    }
++                )
++            )
++        } catch(e: JSONException) {
++            Slog.wtf(TAG, "Failed to create json configuration", e)
++            return
++        }
++        try {
++            appLockConfigFile.outputStream().bufferedWriter().use {
++                val flattenedString = rootObject.toString(4)
++                logD {
++                    "flattenedString = $flattenedString"
++                }
++                it.write(flattenedString, 0, flattenedString.length)
++                it.flush()
++            }
++        } catch(e: IOException) {
++            Slog.wtf(TAG, "Failed to write config to file", e)
++        }
++    }
++}
+diff --git a/services/applock/java/com/android/server/app/AppLockManagerService.kt b/services/applock/java/com/android/server/app/AppLockManagerService.kt
+new file mode 100644
+index 000000000000..ae108ed98d2b
+--- /dev/null
++++ b/services/applock/java/com/android/server/app/AppLockManagerService.kt
+@@ -0,0 +1,1168 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.app
++
++import android.Manifest
++import android.annotation.RequiresPermission
++import android.app.Activity
++import android.app.ActivityManager
++import android.app.ActivityManagerInternal
++import android.app.ActivityOptions
++import android.app.ActivityTaskManager
++import android.app.AlarmManager
++import android.app.AppLockData
++import android.app.AppLockManager
++import android.app.IAppLockManagerService
++import android.app.KeyguardManager
++import android.app.PendingIntent
++import android.app.TaskStackListener
++import android.content.BroadcastReceiver
++import android.content.Context
++import android.content.Intent
++import android.content.IntentFilter
++import android.content.IntentSender
++import android.content.pm.PackageManager
++import android.content.pm.PackageManagerInternal
++import android.os.Binder
++import android.os.Environment
++import android.os.Process
++import android.os.RemoteException
++import android.os.SystemClock
++import android.os.UserHandle
++import android.util.ArrayMap
++import android.util.ArraySet
++import android.util.Log
++import android.util.Slog
++
++import com.android.internal.R
++import com.android.internal.annotations.GuardedBy
++import com.android.internal.util.clover.CloverUtils
++import com.android.server.LocalServices
++import com.android.server.SystemService
++import com.android.server.app.AppLockManagerServiceInternal
++import com.android.server.notification.NotificationManagerInternal
++import com.android.server.wm.ActivityInterceptorCallback.ActivityInterceptorInfo
++import com.android.server.wm.ActivityTaskManagerInternal
++
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.Job
++import kotlinx.coroutines.launch
++import kotlinx.coroutines.runBlocking
++import kotlinx.coroutines.sync.Mutex
++import kotlinx.coroutines.sync.withLock
++import kotlinx.coroutines.withContext
++
++internal val TAG = AppLockManagerService::class.simpleName
++
++private const val ACTION_APP_LOCK_TIMEOUT = "com.android.server.app.AppLockManagerService.APP_LOCK_TIMEOUT"
++private const val SETTINGS_PACKAGE = "com.android.settings"
++
++internal inline fun logD(crossinline msg: () -> String) {
++    if (Log.isLoggable(TAG, Log.DEBUG)) {
++        Slog.d(TAG, msg())
++    }
++}
++
++/**
++ * Service to manage per app lock.
++ *
++ * @hide
++ */
++class AppLockManagerService(
++    private val context: Context
++) : IAppLockManagerService.Stub() {
++
++    private val localService = LocalService()
++    private val serviceScope = CoroutineScope(Dispatchers.Default)
++
++    private val currentUserId: Int
++        get() = activityManagerInternal.currentUserId
++
++    private var isDeviceSecure = false
++
++    private val mutex = Mutex()
++
++    @GuardedBy("mutex")
++    private val userConfigMap = ArrayMap<Int, AppLockConfig>()
++
++    @GuardedBy("mutex")
++    private val topPackages = ArraySet<String>()
++
++    @GuardedBy("mutex")
++    private val unlockedPackages = ArraySet<String>()
++
++    private val biometricUnlocker: BiometricUnlocker by lazy {
++        BiometricUnlocker(context)
++    }
++
++    private val atmInternal: ActivityTaskManagerInternal by lazy {
++        LocalServices.getService(ActivityTaskManagerInternal::class.java)
++    }
++
++    private val notificationManagerInternal: NotificationManagerInternal by lazy {
++        LocalServices.getService(NotificationManagerInternal::class.java)
++    }
++
++    private val keyguardManager: KeyguardManager by lazy {
++        context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
++    }
++
++    private val alarmManager: AlarmManager by lazy {
++        context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
++    }
++
++    private val activityManagerInternal: ActivityManagerInternal by lazy {
++        LocalServices.getService(ActivityManagerInternal::class.java)
++    }
++
++    private val packageManager: PackageManager by lazy {
++        context.packageManager
++    }
++
++    private val pmInternal: PackageManagerInternal by lazy {
++        LocalServices.getService(PackageManagerInternal::class.java)
++    }
++
++    private var deviceLocked = false
++
++    private val alarmsMutex = Mutex()
++
++    @GuardedBy("alarmsMutex")
++    private val scheduledAlarms = ArrayMap<String, PendingIntent>()
++
++    private val whiteListedSystemApps: List<String> by lazy {
++        val systemPackages = pmInternal.getInstalledApplications(
++            PackageManager.MATCH_SYSTEM_ONLY.toLong(),
++            currentUserId,
++            Process.myUid()
++        ).map { it.packageName }
++        context.resources.getStringArray(R.array.config_appLockAllowedSystemApps).filter {
++            systemPackages.contains(it)
++        }
++    }
++
++    private val packageChangeReceiver = object : BroadcastReceiver() {
++        override fun onReceive(context: Context?, intent: Intent?) {
++            if (intent?.action != Intent.ACTION_PACKAGE_REMOVED
++                    && intent?.action != Intent.ACTION_PACKAGE_ADDED) return
++            val userId = getSendingUserId()
++            if (userId != currentUserId) {
++                logD {
++                    "Ignoring package removal broadcast from user $userId"
++                }
++                return
++            }
++            val isReplacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false /* defaultValue */)
++            if (isReplacing) {
++                logD {
++                    "Ignoring package update broadcast"
++                }
++                return
++            }
++            val packageName = intent.data?.schemeSpecificPart ?: run {
++                Slog.e(TAG, "Failed to get package name")
++                return
++            }
++            serviceScope.launch {
++                val config = mutex.withLock {
++                    userConfigMap[userId] ?: run {
++                        Slog.e(TAG, "Config unavailable for user $userId")
++                        return@launch
++                    }
++                }
++                if (intent?.action == Intent.ACTION_PACKAGE_REMOVED) {
++                    mutex.withLock {
++                        if (config.shouldProtectApp(packageName)) {
++                            logD {
++                                "Package $packageName in the protected list, cleaning up"
++                            }
++                            alarmsMutex.withLock {
++                                scheduledAlarms.remove(packageName)?.let {
++                                    alarmManager.cancel(it)
++                                }
++                            }
++                            unlockedPackages.remove(packageName)
++                        }
++                    }
++                    logD {
++                        "Package $packageName uninstalled, cleaning up"
++                    }
++                    mutex.withLock {
++                        if (config.removePackageFromMap(packageName)) {
++                            withContext(Dispatchers.IO) {
++                                config.write()
++                            }
++                        }
++                    }
++                } else if (intent?.action == Intent.ACTION_PACKAGE_ADDED) {
++                    logD {
++                        "Package $packageName installed, configuring app lock"
++                    }
++                    mutex.withLock {
++                        if (config.addPackageToMap(packageName)) {
++                            withContext(Dispatchers.IO) {
++                                config.write()
++                            }
++                        }
++                    }
++                }
++            }
++        }
++    }
++
++    private val taskStackListener = object : TaskStackListener() {
++        override fun onTaskStackChanged() {
++            logD {
++                "onTaskStackChanged"
++            }
++            serviceScope.launch {
++                val currentTopPackages = atmInternal.topVisibleActivities.map {
++                    it.activityToken
++                }.filter {
++                    atmInternal.isVisibleActivity(it)
++                }.map {
++                    atmInternal.getActivityName(it)?.packageName
++                }.filterNotNull().toSet()
++                logD {
++                    "currentTopPackages = $currentTopPackages"
++                }
++                // We should return early if current top packages
++                // are empty to avoid doing anything absurd.
++                if (currentTopPackages.isEmpty()) return@launch
++                val packagesToLock = mutex.withLock {
++                    logD {
++                        "topPackages = $topPackages"
++                    }
++                    val packages = topPackages.filter {
++                        !currentTopPackages.contains(it) && unlockedPackages.contains(it)
++                    }.toSet()
++                    topPackages.clear()
++                    topPackages.addAll(currentTopPackages)
++                    return@withLock packages
++                }
++                packagesToLock.forEach {
++                    scheduleLockAlarm(it)
++                }
++                alarmsMutex.withLock {
++                    currentTopPackages.forEach { pkg ->
++                        scheduledAlarms.remove(pkg)?.let {
++                            logD {
++                                "Cancelling timeout alarm for $pkg"
++                            }
++                            alarmManager.cancel(it)
++                        }
++                    }
++                }
++                currentTopPackages.forEach {
++                    checkAndUnlockPackage(it)
++                }
++            }
++        }
++
++        override fun onActivityUnpinned() {
++            logD {
++                "onActivityUnpinned"
++            }
++            onTaskStackChanged()
++        }
++    }
++
++    private fun scheduleLockAlarm(pkg: String) {
++        logD {
++            "scheduleLockAlarm, package = $pkg"
++        }
++        serviceScope.launch {
++            alarmsMutex.withLock {
++                if (scheduledAlarms.containsKey(pkg)) {
++                    logD {
++                        "Alarm already scheduled for package $pkg"
++                    }
++                    return@launch
++                }
++            }
++            val timeout = mutex.withLock {
++                userConfigMap[currentUserId]?.appLockTimeout
++            } ?: run {
++                Slog.e(TAG, "Failed to retrieve user config for $currentUserId")
++                return@launch
++            }
++            val pendingIntent = PendingIntent.getBroadcast(
++                context,
++                pkg.hashCode(),
++                Intent(ACTION_APP_LOCK_TIMEOUT).apply {
++                    putExtra(Intent.EXTRA_PACKAGE_NAME, pkg)
++                },
++                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
++            )
++            alarmManager.setExactAndAllowWhileIdle(
++                AlarmManager.ELAPSED_REALTIME_WAKEUP,
++                SystemClock.elapsedRealtime() + timeout,
++                pendingIntent
++            )
++            alarmsMutex.withLock {
++                scheduledAlarms[pkg] = pendingIntent
++            }
++        }
++    }
++
++    private fun checkAndUnlockPackage(pkg: String) {
++        if (!isDeviceSecure) return
++        serviceScope.launch {
++            mutex.withLock {
++                if (unlockedPackages.contains(pkg)) return@launch
++                val config = userConfigMap[currentUserId] ?: run {
++                    Slog.e(TAG, "Config unavailable for user $currentUserId")
++                    return@launch
++                }
++                if (!config.shouldProtectApp(pkg)) return@launch
++            }
++            logD {
++                "$pkg is locked out, asking user to unlock"
++            }
++            unlockInternal(pkg, currentUserId,
++                onSuccess = {
++                    serviceScope.launch {
++                        mutex.withLock {
++                            unlockedPackages.add(pkg)
++                        }
++                    }
++                },
++                onCancel = {
++                    // Send user to home on cancel
++                    context.mainExecutor.execute {
++                        atmInternal.startHomeActivity(currentUserId,
++                            "unlockInternal#onCancel")
++                    }
++                }
++            )
++        }
++    }
++
++    private val lockAlarmReceiver = object : BroadcastReceiver() {
++        override fun onReceive(context: Context?, intent: Intent?) {
++            if (intent?.action != ACTION_APP_LOCK_TIMEOUT) return
++            logD {
++                "Lock alarm received"
++            }
++            val packageName = intent.getStringExtra(Intent.EXTRA_PACKAGE_NAME) ?: return
++            logD {
++                "$packageName timed out"
++            }
++            serviceScope.launch {
++                mutex.withLock {
++                    if (topPackages.contains(packageName)) {
++                        logD {
++                            "$packageName is currently in foreground, skipping lock"
++                        }
++                        // Mark it as unlocked, since it actually is
++                        unlockedPackages.add(packageName)
++                        return@withLock
++                    }
++                    unlockedPackages.remove(packageName)
++                }
++                alarmsMutex.withLock {
++                    scheduledAlarms.remove(packageName)
++                }
++                val isContentSecure = mutex.withLock {
++                    userConfigMap[currentUserId]?.shouldRedactNotification(packageName) ?: run {
++                        Slog.e(TAG, "Config unavailable for user $currentUserId")
++                        return@launch
++                    }
++                }
++                notificationManagerInternal.updateSecureNotifications(
++                    packageName,
++                    isContentSecure,
++                    true /* isBubbleUpSuppressed */,
++                    currentUserId
++                )
++            }
++        }
++    }
++
++    private fun getActualUserId(userId: Int, tag: String): Int {
++        return ActivityManager.handleIncomingUser(Binder.getCallingPid(),
++            Binder.getCallingUid(), userId, false /* allowAll */,
++            true /* requireFull */, tag, AppLockManagerService::class.qualifiedName)
++    }
++
++    private inline fun <R> clearAndExecute(crossinline block: () -> R): R {
++        val ident = Binder.clearCallingIdentity()
++        try {
++            return block()
++        } finally {
++            Binder.restoreCallingIdentity(ident)
++        }
++    }
++
++    private fun unlockInternal(
++        pkg: String,
++        userId: Int,
++        onSuccess: () -> Unit,
++        onCancel: () -> Unit,
++    ) {
++        clearAndExecute {
++            if (!biometricUnlocker.canUnlock()) {
++                Slog.e(TAG, "Application cannot be unlocked with biometrics or device credentials")
++                return@clearAndExecute
++            }
++            biometricUnlocker.unlock(getLabelForPackage(pkg, userId), onSuccess, onCancel)
++        }
++    }
++
++    private fun getLabelForPackage(pkg: String, userId: Int): String? =
++        try {
++            pmInternal.getApplicationInfo(
++                pkg,
++                PackageManager.MATCH_ALL.toLong(),
++                Process.myUid(),
++                userId,
++            ).loadLabel(packageManager).toString()
++        } catch(e: PackageManager.NameNotFoundException) {
++            Slog.e(TAG, "Package $pkg not found")
++            null
++        }
++
++    /**
++     * Set whether app should be protected by app lock.
++     *
++     * @param packageName the package name.
++     * @param shouldProtectApp true to hide notification content.
++     * @param userId the user id of the caller.
++     * @throws [SecurityException] if caller does not have permission
++     *     [Manifest.permissions.MANAGE_APP_LOCK].
++     */
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    override fun setShouldProtectApp(
++        packageName: String,
++        shouldProtectApp: Boolean,
++        userId: Int,
++    ) {
++        logD {
++            "setShouldProtectApp: packageName = $packageName, userId = $userId"
++        }
++        enforceCallingPermission("setShouldProtectApp")
++        checkPackage(packageName, userId)
++        val actualUserId = getActualUserId(userId, "setShouldProtectApp")
++        serviceScope.launch {
++            mutex.withLock {
++                val config = userConfigMap[actualUserId] ?: run {
++                    Slog.e(TAG, "setShouldProtectApp requested by unknown " +
++                        "user id $actualUserId")
++                    return@withLock
++                }
++                if (!config.setShouldProtectApp(packageName, shouldProtectApp)) {
++                    return@withLock
++                }
++                notificationManagerInternal.updateSecureNotifications(
++                    packageName,
++                    shouldProtectApp /* isContentSecure */,
++                    shouldProtectApp /* isBubbleUpSuppressed */,
++                    actualUserId
++                )
++                withContext(Dispatchers.IO) {
++                    config.write()
++                }
++            }
++        }
++    }
++
++    private fun checkPackage(pkg: String, userId: Int) {
++        try {
++            val aInfo = pmInternal.getApplicationInfo(
++                pkg,
++                PackageManager.MATCH_ALL.toLong(),
++                Process.myUid(),
++                userId
++            )
++            if (!aInfo.isSystemApp()) return
++            if (CloverUtils.launchablePackages(context).contains(pkg)) return
++            if (!whiteListedSystemApps.contains(pkg))
++                throw IllegalArgumentException("System package $pkg is not whitelisted")
++        } catch(e: PackageManager.NameNotFoundException) {
++            throw IllegalArgumentException("Package $pkg is not installed")
++        }
++    }
++
++    /**
++     * Get the current auto lock timeout.
++     *
++     * @param userId the user id of the caller.
++     * @return the timeout in milliseconds if configuration for
++     *     current user exists, -1 otherwise.
++     */
++    override fun getTimeout(userId: Int): Long {
++        logD {
++            "getTimeout: userId = $userId"
++        }
++        val actualUserId = getActualUserId(userId, "getTimeout")
++        return runBlocking {
++            mutex.withLock {
++                userConfigMap[actualUserId]?.let { it.appLockTimeout } ?: run {
++                    Slog.e(TAG, "getTimeout requested by unknown user id $actualUserId")
++                    -1L
++                }
++            }
++        }
++    }
++
++    /**
++     * Set auto lock timeout.
++     *
++     * @param timeout the timeout in milliseconds. Must be >= 5.
++     * @param userId the user id of the caller.
++     * @throws [SecurityException] if caller does not have permission
++     *     [Manifest.permissions.MANAGE_APP_LOCK].
++     */
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    override fun setTimeout(timeout: Long, userId: Int) {
++        logD {
++            "setTimeout: timeout = $timeout, userId = $userId"
++        }
++        if (timeout < 5L) {
++            throw IllegalArgumentException("Timeout must be greater than or equal to 5")
++        }
++        enforceCallingPermission("setTimeout")
++        val actualUserId = getActualUserId(userId, "setTimeout")
++        serviceScope.launch {
++            mutex.withLock {
++                val config = userConfigMap[actualUserId] ?: run {
++                    Slog.e(TAG, "setTimeout requested by unknown user id $actualUserId")
++                    return@withLock
++                }
++                if (config.appLockTimeout == timeout) return@withLock
++                config.appLockTimeout = timeout
++                withContext(Dispatchers.IO) {
++                    config.write()
++                }
++            }
++        }
++    }
++
++    /**
++     * Get all the packages protected with app lock.
++     *
++     * @param userId the user id of the caller.
++     * @return list of [AppLockData] of the protected apps.
++     * @throws [SecurityException] if caller does not have permission
++     *     [Manifest.permissions.MANAGE_APP_LOCK].
++     */
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    override fun getPackageData(userId: Int): List<AppLockData> {
++        logD {
++            "getPackages: userId = $userId"
++        }
++        enforceCallingPermission("getPackages")
++        val actualUserId = getActualUserId(userId, "getPackages")
++        return runBlocking {
++            mutex.withLock {
++                userConfigMap[actualUserId]?.getAppLockDataList() ?: run {
++                    Slog.e(TAG, "getPackages requested by unknown user id $actualUserId")
++                    emptyList()
++                }
++            }
++        }
++    }
++
++    /**
++     * Set whether notification content should be redacted for a package
++     * in locked state.
++     *
++     * @param packageName the package name.
++     * @param shouldRedactNotification true to hide notification content.
++     * @param userId the user id of the caller.
++     * @throws [SecurityException] if caller does not have permission
++     *     [Manifest.permissions.MANAGE_APP_LOCK].
++     */
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    override fun setShouldRedactNotification(
++        packageName: String,
++        shouldRedactNotification: Boolean,
++        userId: Int,
++    ) {
++        logD {
++            "setShouldRedactNotification: packageName = $packageName, userId = $userId"
++        }
++        enforceCallingPermission("setShouldRedactNotification")
++        val actualUserId = getActualUserId(userId, "setShouldRedactNotification")
++        serviceScope.launch {
++            mutex.withLock {
++                val config = userConfigMap[actualUserId] ?: run {
++                    Slog.e(TAG, "setShouldRedactNotification requested by unknown " +
++                        "user id $actualUserId")
++                    return@withLock
++                }
++                if (!config.setShouldRedactNotification(packageName, shouldRedactNotification)) {
++                    return@withLock
++                }
++                val isLocked = !unlockedPackages.contains(packageName)
++                    && !topPackages.contains(packageName)
++                val shouldSecureContent = shouldRedactNotification && isLocked
++                notificationManagerInternal.updateSecureNotifications(
++                    packageName,
++                    shouldSecureContent,
++                    isLocked /* isBubbleUpSuppressed */,
++                    actualUserId
++                )
++                withContext(Dispatchers.IO) {
++                    config.write()
++                }
++            }
++        }
++    }
++
++    /**
++     * Set whether to allow unlocking with biometrics.
++     *
++     * @param biometricsAllowed whether to use biometrics.
++     * @param userId the user id of the caller.
++     * @throws [SecurityException] if caller does not have permission
++     *     [Manifest.permissions.MANAGE_APP_LOCK].
++     */
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    override fun setBiometricsAllowed(biometricsAllowed: Boolean, userId: Int) {
++        logD {
++            "setBiometricsAllowed: biometricsAllowed = $biometricsAllowed, userId = $userId"
++        }
++        enforceCallingPermission("setBiometricsAllowed")
++        val actualUserId = getActualUserId(userId, "setBiometricsAllowed")
++        serviceScope.launch {
++            mutex.withLock {
++                val config = userConfigMap[actualUserId] ?: run {
++                    Slog.e(TAG, "setBiometricsAllowed requested by unknown user id $actualUserId")
++                    return@withLock
++                }
++                if (config.biometricsAllowed == biometricsAllowed) return@withLock
++                config.biometricsAllowed = biometricsAllowed
++                biometricUnlocker.biometricsAllowed = biometricsAllowed
++                withContext(Dispatchers.IO) {
++                    config.write()
++                }
++            }
++        }
++    }
++
++    /**
++     * Check whether biometrics is allowed for unlocking.
++     *
++     * @return true if biometrics will be used for unlocking, false otheriwse.
++     */
++    override fun isBiometricsAllowed(userId: Int): Boolean {
++        logD {
++            "isBiometricsAllowed: userId = $userId"
++        }
++        val actualUserId = getActualUserId(userId, "isBiometricsAllowed")
++        return runBlocking {
++            mutex.withLock {
++                userConfigMap[actualUserId]?.let { it.biometricsAllowed } ?: run {
++                    Slog.e(TAG, "isBiometricsAllowed requested by unknown user id $actualUserId")
++                    AppLockManager.DEFAULT_BIOMETRICS_ALLOWED
++                }
++            }
++        }
++    }
++
++    /**
++     * Unlock a package following authentication with credentials.
++     * Caller must hold {@link android.permission.MANAGE_APP_LOCK}.
++     *
++     * @param packageName the name of the package to unlock.
++     * @param userId the user id of the caller.
++     * @throws [SecurityException] if caller does not have permission
++     *     [Manifest.permissions.MANAGE_APP_LOCK].
++     */
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    override fun unlockPackage(packageName: String, userId: Int) {
++        logD {
++            "unlockPackage: packageName = $packageName, userId = $userId"
++        }
++        enforceCallingPermission("unlockPackage")
++        val actualUserId = getActualUserId(userId, "unlockPackage")
++        serviceScope.launch {
++            mutex.withLock {
++                val config = userConfigMap[actualUserId] ?: run {
++                    Slog.e(TAG, "unlockPackage requested by unknown user id $actualUserId")
++                    return@launch
++                }
++                if (!config.shouldProtectApp(packageName)) {
++                    Slog.w(TAG, "Unlock requested for package $packageName " +
++                        "that is not in list")
++                    return@launch
++                }
++                unlockedPackages.add(packageName)
++            }
++            notificationManagerInternal.updateSecureNotifications(
++                packageName,
++                false /* isContentSecure */,
++                false /* isBubbleUpSuppressed */,
++                actualUserId
++            )
++        }
++    }
++
++    /**
++     * Hide or unhide an application from launcher.
++     * Caller must hold {@link android.permission.MANAGE_APP_LOCK}.
++     *
++     * @param packageName the name of the package to hide or unhide.
++     * @param hide whether to hide or not.
++     * @param userId the user id of the caller.
++     * @throws [SecurityException] if caller does not have permission
++     *     [Manifest.permissions.MANAGE_APP_LOCK].
++     */
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    override fun setPackageHidden(
++        packageName: String,
++        hide: Boolean,
++        userId: Int,
++    ) {
++        logD {
++            "setPackageHidden: packageName = $packageName, hide = $hide, userId = $userId"
++        }
++        enforceCallingPermission("setPackageHidden")
++        val actualUserId = getActualUserId(userId, "setPackageHidden")
++        serviceScope.launch {
++            mutex.withLock {
++                val config = userConfigMap[actualUserId] ?: run {
++                    Slog.e(TAG, "setPackageHidden requested by unknown " +
++                        "user id $actualUserId")
++                    return@withLock
++                }
++                if (!config.hidePackage(packageName, hide)) {
++                    return@withLock
++                }
++                withContext(Dispatchers.IO) {
++                    config.write()
++                }
++            }
++        }
++    }
++
++    /**
++     * Check whether package is protected by app lock
++     *
++     * @param packageName the package name sent by caller.
++     * @param userId the user id of the caller.
++     * @return boolean whether app is protected or not.
++     */
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    override fun isPackageProtected(packageName: String, userId: Int): Boolean {
++        logD {
++            "isPackageProtected: packageName = $packageName, userId = $userId"
++        }
++        val actualUserId = getActualUserId(userId, "isPackageProtected")
++        return runBlocking {
++            mutex.withLock {
++                userConfigMap[actualUserId]?.shouldProtectApp(packageName) ?: run {
++                    Slog.e(TAG, "isPackageProtected requested by unknown user id $actualUserId")
++                    AppLockManager.DEFAULT_PROTECT_APP
++                }
++            }
++        }
++    }
++
++    /**
++     * Check whether package is hidden by app lock
++     *
++     * @param packageName the package name sent by caller.
++     * @param userId the user id of the caller.
++     * @return boolean whether app is hidden or not.
++     */
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    override fun isPackageHidden(packageName: String, userId: Int): Boolean {
++        logD {
++            "isPackageHidden: packageName = $packageName, userId = $userId"
++        }
++        val actualUserId = getActualUserId(userId, "isPackageHidden")
++        return runBlocking {
++            mutex.withLock {
++                userConfigMap[actualUserId]?.shouldHideApp(packageName) ?: run {
++                    Slog.e(TAG, "isPackageHidden requested by unknown user id $actualUserId")
++                    AppLockManager.DEFAULT_HIDE_IN_LAUNCHER
++                }
++            }
++        }
++    }
++
++    /**
++     * Get the list of applications hidden from launcher.
++     * Caller must hold {@link android.permission.MANAGE_APP_LOCK}.
++     *
++     * @param userId the user id of the caller.
++     * @return list of package names of the hidden apps.
++     * @throws [SecurityException] if caller does not have permission
++     *     [Manifest.permissions.MANAGE_APP_LOCK].
++     */
++    @RequiresPermission(Manifest.permission.MANAGE_APP_LOCK)
++    override fun getHiddenPackages(userId: Int): List<String> {
++        enforceCallingPermission("getHiddenPackages")
++        return localService.getHiddenPackages(userId).toList()
++    }
++
++    private fun enforceCallingPermission(msg: String) {
++        context.enforceCallingPermission(Manifest.permission.MANAGE_APP_LOCK, msg)
++    }
++
++    private fun onStart() {
++        LocalServices.addService(AppLockManagerServiceInternal::class.java, localService)
++    }
++
++    private fun onBootCompleted() {
++        Slog.i(TAG, "onBootCompleted")
++        context.registerReceiverAsUser(
++            lockAlarmReceiver,
++            UserHandle.SYSTEM,
++            IntentFilter(ACTION_APP_LOCK_TIMEOUT),
++            null /* broadcastPermission */,
++            null /* scheduler */,
++        )
++
++        context.registerReceiverForAllUsers(
++            packageChangeReceiver,
++            IntentFilter(Intent.ACTION_PACKAGE_REMOVED).apply {
++                addDataScheme(IntentFilter.SCHEME_PACKAGE)
++            },
++            null /* broadcastPermission */,
++            null /* scheduler */,
++        )
++
++        ActivityTaskManager.getService().registerTaskStackListener(taskStackListener)
++    }
++
++    private fun onUserStarting(userId: Int) {
++        Slog.i(TAG, "onUserStarting: userId = $userId")
++        isDeviceSecure = keyguardManager.isDeviceSecure(userId)
++        logD {
++            "isDeviceSecure = $isDeviceSecure"
++        }
++        serviceScope.launch {
++            mutex.withLock {
++                withContext(Dispatchers.IO) {
++                    val config = AppLockConfig(Environment.getDataSystemDeDirectory(userId))
++                    userConfigMap[userId] = config
++                    config.read()
++                    biometricUnlocker.biometricsAllowed = config.biometricsAllowed
++                    verifyPackagesLocked(config)
++                }
++            }
++        }
++    }
++
++    private fun verifyPackagesLocked(config: AppLockConfig) {
++        var currentPackages = config.getAppLockAppList()
++        val validPackages = pmInternal.getInstalledApplications(
++            PackageManager.MATCH_ALL.toLong(),
++            currentUserId,
++            Process.myUid()
++        ).map { it.packageName }
++        var changed = false
++        logD {
++            "Current packages = $currentPackages"
++            "Valid packages = $validPackages"
++        }
++        for (i in 0 until currentPackages.size) {
++            val pkg = currentPackages[i]
++            if (!validPackages.contains(pkg)) {
++                config.removePackageFromMap(pkg)
++                changed = true
++            }
++        }
++        currentPackages = config.getAppLockAppList()
++        for (i in 0 until validPackages.size) {
++            val pkg = validPackages[i]
++            if (!currentPackages.contains(pkg)) {
++                config.addPackageToMap(pkg)
++                changed = true
++            }
++        }
++        logD {
++            val filteredPackages = config.getAppLockAppList()
++            "Updated current packages = $filteredPackages"
++        }
++        if (changed) {
++            config.write()
++        }
++    }
++
++    private fun onUserStopping(userId: Int): Job {
++        Slog.i(TAG, "onUserStopping: userId = $userId")
++        return serviceScope.launch {
++            mutex.withLock {
++                unlockedPackages.clear()
++                userConfigMap[userId]?.let {
++                    withContext(Dispatchers.IO) {
++                        it.write()
++                    }
++                }
++            }
++        }
++    }
++
++    private fun onUserSwitching(oldUserId: Int, newUserId: Int) {
++        Slog.i(TAG, "onUserSwitching: oldUserId = $oldUserId, newUserId = $newUserId")
++        serviceScope.launch {
++            if (oldUserId != UserHandle.USER_NULL) {
++                onUserStopping(oldUserId).join()
++            }
++            onUserStarting(newUserId)
++        }
++    }
++
++    private inner class LocalService : AppLockManagerServiceInternal {
++        /**
++         * Check whether user is valid and device is secure
++         */
++        private fun checkUserAndDeviceStatus(userId: Int): Boolean {
++            if (userId < 0) {
++                logD {
++                    "Ignoring requireUnlock call for special user $userId"
++                }
++                return false
++            }
++            isDeviceSecure = keyguardManager.isDeviceSecure(userId)
++            if (!isDeviceSecure) {
++                logD {
++                    "Device is not secure, app does not require unlock"
++                }
++                return false
++            }
++            return true
++        }
++
++        override fun requireUnlock(packageName: String, userId: Int): Boolean {
++            return requireUnlockInternal(packageName, userId, false /* ignoreLockState */)
++        }
++
++        private fun requireUnlockInternal(
++            packageName: String,
++            userId: Int,
++            ignoreLockState: Boolean,
++        ) : Boolean {
++            if (!checkUserAndDeviceStatus(userId)) return false
++            val isLocked = clearAndExecute {
++                // If device is locked then there is no point in proceeding.
++                !ignoreLockState && keyguardManager.isDeviceLocked()
++            }
++            if (isLocked) {
++                logD {
++                    "Device is locked, app does not require unlock"
++                }
++                return false
++            }
++            logD {
++                "requireUnlock: packageName = $packageName"
++            }
++            val actualUserId = getActualUserId(userId, "requireUnlock")
++            return runBlocking {
++                mutex.withLock {
++                    val config = userConfigMap[actualUserId] ?: run {
++                        Slog.e(TAG, "requireUnlock queried by unknown user id $actualUserId")
++                        return@withLock false
++                    }
++                    val requireUnlock = config.shouldProtectApp(packageName) &&
++                        !unlockedPackages.contains(packageName)
++                    logD {
++                        "requireUnlock = $requireUnlock"
++                    }
++                    return@withLock requireUnlock
++                }
++            }
++        }
++
++        override fun reportPasswordChanged(userId: Int) {
++            logD {
++                "reportPasswordChanged: userId = $userId"
++            }
++            if (userId != currentUserId) {
++                logD {
++                    "Ignoring password change event for user $userId"
++                }
++                return
++            }
++            isDeviceSecure = keyguardManager.isDeviceSecure(userId)
++            logD {
++                "isDeviceSecure = $isDeviceSecure"
++            }
++        }
++
++        override fun shouldRedactNotification(
++            packageName: String,
++            userId: Int,
++        ) : Boolean {
++            if (!checkUserAndDeviceStatus(userId)) return false
++            logD {
++                "shouldRedactNotification: packageName = $packageName, userId = $userId"
++            }
++            val actualUserId = getActualUserId(userId, "shouldRedactNotification")
++            if (!requireUnlockInternal(packageName, userId, true /* ignoreLockState */)) return false
++            return runBlocking {
++                mutex.withLock {
++                    val config = userConfigMap[actualUserId] ?: run {
++                        Slog.e(TAG, "shouldRedactNotification queried by " +
++                            "unknown user id $actualUserId")
++                        return@withLock false
++                    }
++                    val secure = config.shouldRedactNotification(packageName)
++                    logD {
++                        "Secure = $secure"
++                    }
++                    return@withLock secure
++                }
++            }
++        }
++
++        override fun notifyDeviceLocked(locked: Boolean, userId: Int) {
++            logD {
++                "Device locked = $locked for user $userId"
++            }
++            if (userId != currentUserId ||
++                    !isDeviceSecure ||
++                    deviceLocked == locked) return
++            deviceLocked = locked
++            serviceScope.launch {
++                val config = mutex.withLock {
++                    userConfigMap[currentUserId] ?: run {
++                        Slog.e(TAG, "Config unavailable for user $currentUserId")
++                        return@launch
++                    }
++                }
++                if (deviceLocked) {
++                    mutex.withLock {
++                        if (unlockedPackages.isEmpty()) return@withLock
++                        logD {
++                            "Locking all packages"
++                        }
++                        unlockedPackages.clear()
++                    }
++                    alarmsMutex.withLock {
++                        if (scheduledAlarms.isEmpty()) return@withLock
++                        scheduledAlarms.values.forEach {
++                            alarmManager.cancel(it)
++                        }
++                        scheduledAlarms.clear()
++                    }
++                } else {
++                    mutex.withLock {
++                        if (topPackages.isEmpty()) return@withLock
++                        // If device is locked with an app in the foreground,
++                        // even if it is removed from [unlockedPackages], it will
++                        // still be shown when unlocked, so we need to start home
++                        // activity as soon as such a condition is detected on unlock.
++                        val shouldGoToHome = topPackages.any {
++                            config.shouldProtectApp(it) &&
++                                !unlockedPackages.contains(it)
++                        }
++                        if (!shouldGoToHome) return@withLock
++                        logD {
++                            "Locking foreground package"
++                        }
++                        context.mainExecutor.execute {
++                            atmInternal.startHomeActivity(currentUserId,
++                                "Locked package in foreground")
++                        }
++                    }
++                }
++            }
++        }
++
++        override fun interceptActivity(info: ActivityInterceptorInfo): Intent? {
++            val packageName = info.activityInfo.packageName
++            logD {
++                "interceptActivity, pkg = $packageName"
++            }
++            if (!requireUnlock(packageName, info.userId)) return null
++            val target = IntentSender(
++                atmInternal.getIntentSender(
++                    ActivityManager.INTENT_SENDER_ACTIVITY,
++                    info.callingPackage,
++                    info.callingFeatureId,
++                    info.callingPid,
++                    info.userId,
++                    null /* token */,
++                    null /* resultCode */,
++                    0 /* requestCode */,
++                    arrayOf(info.intent),
++                    arrayOf(info.resolvedType),
++                    PendingIntent.FLAG_CANCEL_CURRENT or
++                        PendingIntent.FLAG_ONE_SHOT or
++                        PendingIntent.FLAG_IMMUTABLE,
++                    ActivityOptions.makeBasic().toBundle()
++                )
++            )
++            val intent = Intent(AppLockManager.ACTION_UNLOCK_APP)
++                .setPackage(SETTINGS_PACKAGE)
++                .apply {
++                    putExtra(Intent.EXTRA_PACKAGE_NAME, packageName)
++                    putExtra(Intent.EXTRA_INTENT, target)
++                    putExtra(Intent.EXTRA_USER_ID, info.userId)
++                    putExtra(AppLockManager.EXTRA_PACKAGE_LABEL, info.activityInfo.loadLabel(packageManager))
++                    putExtra(AppLockManager.EXTRA_ALLOW_BIOMETRICS, isBiometricsAllowed(info.userId))
++                }
++            return intent
++        }
++
++        override fun getHiddenPackages(userId: Int): Set<String> {
++            logD {
++                "getHiddenPackages: userId = $userId"
++            }
++            return runBlocking {
++                val actualUserId = getActualUserId(userId, "getHiddenPackages")
++                val config = mutex.withLock {
++                    userConfigMap[actualUserId] ?: run {
++                        Slog.e(TAG, "Config unavailable for user $userId")
++                        return@runBlocking emptySet()
++                    }
++                }
++                val list = config.getAppLockHiddenAppList()
++                logD {
++                    "data list = $list"
++                }
++                list.toSet()
++            }
++        }
++    }
++
++    class Lifecycle(context: Context) : SystemService(context) {
++        private val service = AppLockManagerService(context)
++
++        override fun onStart() {
++            publishBinderService(Context.APP_LOCK_SERVICE, service)
++            service.onStart()
++        }
++
++        override fun onBootPhase(phase: Int) {
++            if (phase == PHASE_ACTIVITY_MANAGER_READY) {
++                service.onBootCompleted()
++            }
++        }
++
++        override fun onUserStarting(user: TargetUser) {
++            service.onUserStarting(user.userIdentifier)
++        }
++
++        override fun onUserStopping(user: TargetUser) {
++            service.onUserStopping(user.userIdentifier)
++        }
++
++        override fun onUserSwitching(from: TargetUser?, to: TargetUser) {
++            service.onUserSwitching(
++                from?.userIdentifier ?: UserHandle.USER_NULL,
++                to.userIdentifier
++            )
++        }
++    }
++}
+diff --git a/services/applock/java/com/android/server/app/BiometricUnlocker.kt b/services/applock/java/com/android/server/app/BiometricUnlocker.kt
+new file mode 100644
+index 000000000000..1c0bf8d347c8
+--- /dev/null
++++ b/services/applock/java/com/android/server/app/BiometricUnlocker.kt
+@@ -0,0 +1,109 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.app
++
++import android.content.Context
++import android.hardware.biometrics.BiometricConstants
++import android.hardware.biometrics.BiometricManager
++import android.hardware.biometrics.BiometricManager.Authenticators
++import android.hardware.biometrics.BiometricPrompt
++import android.hardware.biometrics.BiometricPrompt.AuthenticationCallback
++import android.hardware.biometrics.BiometricPrompt.AuthenticationResult
++import android.os.CancellationSignal
++import android.util.Slog
++
++import com.android.internal.R
++
++/**
++ * Handles logic of unlocking an app with biometrics or device credentials.
++ *
++ * @hide
++ */
++internal class BiometricUnlocker(private val context: Context) {
++
++    private val biometricManager = context.getSystemService(BiometricManager::class.java)!!
++
++    // Set operation must be externally synchronized
++    var biometricsAllowed = false
++
++    /**
++     * Determine whether biometrics or device credentials can be used for
++     * unlocking operation.
++     */
++    fun canUnlock(): Boolean =
++        biometricManager.canAuthenticate(
++            Authenticators.BIOMETRIC_WEAK or
++                Authenticators.DEVICE_CREDENTIAL
++        ) == BiometricManager.BIOMETRIC_SUCCESS
++
++    /**
++     * Unlock an application. Should call this method only if
++     * [canUnlock] returned true.
++     *
++     * @param title the title of the dialog prompt.
++     * @param onSuccess the callback invoked on successfull authentication.
++     * @param onCancel the callback invoked when authentication is cancelled.
++     */
++    fun unlock(
++        packageLabel: String?,
++        onSuccess: () -> Unit,
++        onCancel: () -> Unit,
++    ) {
++        val callback = object : AuthenticationCallback() {
++            override fun onAuthenticationSucceeded(result: AuthenticationResult) {
++                logD {
++                    "onAuthenticationSucceeded"
++                }
++                onSuccess()
++            }
++
++            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
++                Slog.i(TAG, "onAuthenticationError, errorCode = " +
++                    "$errorCode, errString = $errString")
++                if (errorCode == BiometricConstants.BIOMETRIC_ERROR_USER_CANCELED) {
++                    onCancel()
++                }
++            }
++        }
++        showCredentialsPrompt(
++            context.getString(R.string.unlock_application, packageLabel),
++            callback
++        )
++    }
++
++    private fun showCredentialsPrompt(
++        title: String,
++        callback: AuthenticationCallback,
++    ) {
++        var authenticators = Authenticators.DEVICE_CREDENTIAL
++        if (biometricsAllowed) {
++            authenticators = authenticators or Authenticators.BIOMETRIC_WEAK
++        }
++        val prompt = BiometricPrompt.Builder(context)
++            .setTitle(title)
++            .setAllowedAuthenticators(authenticators)
++            .setAllowBackgroundAuthentication(true)
++            .setConfirmationRequired(false)
++            .build()
++        prompt.authenticateUser(
++            CancellationSignal(),
++            context.mainExecutor,
++            callback,
++            context.userId,
++        )
++    }
++}
+\ No newline at end of file
+diff --git a/services/core/java/com/android/server/app/AppLockManagerServiceInternal.java b/services/core/java/com/android/server/app/AppLockManagerServiceInternal.java
+new file mode 100644
+index 000000000000..106b72ff07ea
+--- /dev/null
++++ b/services/core/java/com/android/server/app/AppLockManagerServiceInternal.java
+@@ -0,0 +1,80 @@
++/**
++ * Copyright (C) 2023 The LibreMobileOS Foundation
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.app;
++
++import android.content.Intent;
++
++import com.android.server.wm.ActivityInterceptorCallback.ActivityInterceptorInfo;
++
++import java.util.Set;
++
++/**
++ * Internal class for system server to manage app lock.
++ *
++ * @hide
++ */
++public interface AppLockManagerServiceInternal {
++
++    /**
++     * Whether user has to unlock this application in order to
++     * open it.
++     *
++     * @param packageName the package name of the app to check.
++     * @param userId the user id given by the caller.
++     * @return true if user has to unlock, false otherwise.
++     */
++    boolean requireUnlock(String packageName, int userId);
++
++    /**
++     * Report that password for user has changed.
++     *
++     * @param userId the user for which password has changed.
++     */
++    void reportPasswordChanged(int userId);
++
++    /**
++     * Check whether notification content should be hidden for a package.
++     *
++     * @param packageName the package to check for.
++     * @param userId the user id given by the caller.
++     * @return true if notification should be hidden, false otherwise.
++     */
++    boolean shouldRedactNotification(String packageName, int userId);
++
++    /**
++     * Notify that the device is locked for current user.
++     */
++    void notifyDeviceLocked(boolean locked, int userId);
++
++    /**
++     * Whether to intercept the activity launch from a package. Used
++     * to show confirm credentials prompt.
++     *
++     * @param info [ActivityInterceptorInfo] of intercepted activity.
++     * @return [Intent] which will be fired. Return null if activity
++     *    shouldn't be intercepted.
++     */
++    Intent interceptActivity(ActivityInterceptorInfo info);
++
++    /**
++     * Get the list of applications hidden from launcher.
++     *
++     * @param userId the user id given of the caller.
++     * @return a hash set of package names.
++     */
++    Set<String> getHiddenPackages(int userId);
++}
+diff --git a/services/core/java/com/android/server/locksettings/LockSettingsService.java b/services/core/java/com/android/server/locksettings/LockSettingsService.java
+index b0d81fbefcd6..82bc825a915f 100644
+--- a/services/core/java/com/android/server/locksettings/LockSettingsService.java
++++ b/services/core/java/com/android/server/locksettings/LockSettingsService.java
+@@ -149,6 +149,7 @@ import com.android.internal.widget.IWeakEscrowTokenRemovedListener;
+ import com.android.internal.widget.LockPatternUtils;
+ import com.android.internal.widget.LockscreenCredential;
+ import com.android.internal.widget.VerifyCredentialResponse;
++import com.android.server.app.AppLockManagerServiceInternal;
+ import com.android.server.LocalServices;
+ import com.android.server.ServiceThread;
+ import com.android.server.StorageManagerInternal;
+@@ -2869,6 +2870,7 @@ public class LockSettingsService extends ILockSettings.Stub {
+                                     .reportLockCredentialChanged(userId);
+                         }
+                     }
++                    LocalServices.getService(AppLockManagerServiceInternal.class).reportPasswordChanged(userId);
+                 });
+     }
+ 
+diff --git a/services/core/java/com/android/server/notification/BubbleExtractor.java b/services/core/java/com/android/server/notification/BubbleExtractor.java
+index 3d6f9cfed697..36b037419a00 100644
+--- a/services/core/java/com/android/server/notification/BubbleExtractor.java
++++ b/services/core/java/com/android/server/notification/BubbleExtractor.java
+@@ -96,7 +96,8 @@ public class BubbleExtractor implements NotificationSignalExtractor {
+         NotificationChannel recordChannel = record.getChannel();
+         if (!userEnabledBubbles
+                 || appPreference == BUBBLE_PREFERENCE_NONE
+-                || !notifCanPresentAsBubble) {
++                || !notifCanPresentAsBubble
++                || record.getSbn().getIsContentSecure()) {
+             record.setAllowBubble(false);
+             if (!notifCanPresentAsBubble) {
+                 // clear out bubble metadata since it can't be used
+@@ -154,10 +155,9 @@ public class BubbleExtractor implements NotificationSignalExtractor {
+      */
+     @VisibleForTesting
+     boolean canPresentAsBubble(NotificationRecord r) {
+-        if (!mSupportsBubble) {
++        if (!mSupportsBubble || r.isBubbleUpSuppressedByAppLock()) {
+             return false;
+         }
+-
+         Notification notification = r.getNotification();
+         Notification.BubbleMetadata metadata = notification.getBubbleMetadata();
+         String pkg = r.getSbn().getPackageName();
+diff --git a/services/core/java/com/android/server/notification/NotificationManagerInternal.java b/services/core/java/com/android/server/notification/NotificationManagerInternal.java
+index 5cf49ac8b1bc..099269a9555d 100644
+--- a/services/core/java/com/android/server/notification/NotificationManagerInternal.java
++++ b/services/core/java/com/android/server/notification/NotificationManagerInternal.java
+@@ -88,6 +88,9 @@ public interface NotificationManagerInternal {
+      */
+     void setDeviceEffectsApplier(DeviceEffectsApplier applier);
+ 
++    void updateSecureNotifications(String pkg, boolean isContentSecure,
++        boolean isBubbleUpSuppressed, int userId);
++
+     // Backup/restore interface
+     byte[] getBackupPayload(int user, BackupRestoreEventLogger logger);
+ 
+diff --git a/services/core/java/com/android/server/notification/NotificationManagerService.java b/services/core/java/com/android/server/notification/NotificationManagerService.java
+index 409bc8dfc1dd..2cd440f0a932 100644
+--- a/services/core/java/com/android/server/notification/NotificationManagerService.java
++++ b/services/core/java/com/android/server/notification/NotificationManagerService.java
+@@ -71,6 +71,7 @@ import static android.app.NotificationManager.ALLOWED_NAS_ADJUSTMENT_KEYS_CHANGE
+ import static android.app.NotificationManager.BUBBLE_PREFERENCE_ALL;
+ import static android.app.NotificationManager.DYNAMIC_BUNDLE_MODIFICATION_TYPE_ADDED;
+ import static android.app.NotificationManager.DYNAMIC_BUNDLE_MODIFICATION_TYPE_REMOVED;
++import static android.app.NotificationManager.BUBBLE_PREFERENCE_NONE;
+ import static android.app.NotificationManager.EXTRA_AUTOMATIC_ZEN_RULE_ID;
+ import static android.app.NotificationManager.EXTRA_AUTOMATIC_ZEN_RULE_STATUS;
+ import static android.app.NotificationManager.EXTRA_DYNAMIC_BUNDLE;
+@@ -417,6 +418,7 @@ import com.android.server.IoThread;
+ import com.android.server.LocalServices;
+ import com.android.server.SystemService;
+ import com.android.server.bitmapoffload.BitmapOffloadContract;
++import com.android.server.app.AppLockManagerServiceInternal;
+ import com.android.server.bitmapoffload.BitmapOffloadInternal;
+ import com.android.server.job.JobSchedulerInternal;
+ import com.android.server.lights.LightsManager;
+@@ -901,6 +903,8 @@ public class NotificationManagerService extends SystemService {
+     private final Set<Uri> mOffloadedBitmapsPendingCleanup = new HashSet<>();
+     private static final Duration OFFLOADED_BITMAP_CLEANUP_DELAY = Duration.ofHours(6);
+ 
++    private AppLockManagerServiceInternal mAppLockManagerService = null;
++
+     static class Archive {
+         final SparseArray<Boolean> mEnabled;
+         final int mBufferSize;
+@@ -3777,6 +3781,7 @@ public class NotificationManagerService extends SystemService {
+                 }
+                 Trace.endSection();
+             }
++            mAppLockManagerService = LocalServices.getService(AppLockManagerServiceInternal.class);
+         } else if (phase == SystemService.PHASE_DEVICE_SPECIFIC_SERVICES_READY) {
+             mPreferencesHelper.updateFixedImportance(mUm.getUsers());
+             mPreferencesHelper.migrateNotificationPermissions(mUm.getUsers());
+@@ -4750,8 +4755,8 @@ public class NotificationManagerService extends SystemService {
+         public int getBubblePreferenceForPackage(String pkg, int uid) {
+             enforceSystemOrSystemUIOrSamePackage(pkg,
+                     "Caller not system or systemui or same package");
+-
+-            if (UserHandle.getCallingUserId() != UserHandle.getUserId(uid)) {
++            final int userId = UserHandle.getUserId(uid);
++            if (UserHandle.getCallingUserId() != userId) {
+                 getContext().enforceCallingPermission(
+                         android.Manifest.permission.INTERACT_ACROSS_USERS,
+                         "getBubblePreferenceForPackage for uid " + uid);
+@@ -5994,7 +5999,8 @@ public class NotificationManagerService extends SystemService {
+                             sbn.getOpPkg(),
+                             sbn.getId(), sbn.getTag(), sbn.getUid(), sbn.getInitialPid(),
+                             notification,
+-                            sbn.getUser(), sbn.getOverrideGroupKey(), sbn.getPostTime());
++                            sbn.getUser(), sbn.getOverrideGroupKey(),
++                            sbn.getPostTime(), sbn.getIsContentSecure());
+                 }
+             }
+             return null;
+@@ -8484,6 +8490,8 @@ public class NotificationManagerService extends SystemService {
+                             0, appIntent, PendingIntent.FLAG_IMMUTABLE, null,
+                             pkg, appInfo.uid);
+                 }
++                final boolean isContentSecure = mAppLockManagerService != null &&
++                    mAppLockManagerService.shouldRedactNotification(pkg, userId);
+                 final StatusBarNotification summarySbn =
+                         new StatusBarNotification(adjustedSbn.getPackageName(),
+                                 adjustedSbn.getOpPkg(),
+@@ -8491,7 +8499,7 @@ public class NotificationManagerService extends SystemService {
+                                 groupKey, adjustedSbn.getUid(),
+                                 adjustedSbn.getInitialPid(), summaryNotification,
+                                 adjustedSbn.getUser(), groupKey,
+-                                System.currentTimeMillis());
++                                System.currentTimeMillis(), isContentSecure);
+                 summaryRecord = new NotificationRecord(getContext(), summarySbn,
+                         notificationRecord.getChannel());
+                 summaryRecord.setImportanceFixed(isPermissionFixed);
+@@ -8499,6 +8507,9 @@ public class NotificationManagerService extends SystemService {
+                         notificationRecord.getIsAppImportanceLocked());
+ 
+                 summaries.put(summarySbn.getGroupKey(), summarySbn.getKey());
++                summaryRecord.setBubbleUpSuppressedByAppLock(
++                    mAppLockManagerService != null &&
++                    mAppLockManagerService.requireUnlock(pkg, userId));
+             }
+             if (summaryRecord != null && checkDisqualifyingFeatures(userId, uid,
+                     summaryRecord.getSbn().getId(), summaryRecord.getSbn().getTag(), summaryRecord,
+@@ -9175,6 +9186,33 @@ public class NotificationManagerService extends SystemService {
+             }
+             return mZenModeHelper;
+         }
++
++        @Override
++        public void updateSecureNotifications(String pkg, boolean isContentSecure,
++                boolean isBubbleUpSuppressed, int userId) {
++            mHandler.post(() -> updateSecureNotificationsInternal(pkg, isContentSecure,
++                isBubbleUpSuppressed, userId));
++        }
++
++        private void updateSecureNotificationsInternal(String pkg, boolean isContentSecure,
++                boolean isBubbleUpSuppressed, int userId) {
++            synchronized (mNotificationLock) {
++                for (int i = 0; i < mNotificationList.size(); i++) {
++                    final NotificationRecord nr = mNotificationList.get(i);
++                    final StatusBarNotification sbn = nr.getSbn();
++                    if (UserHandle.getUserId(sbn.getUid()) == userId
++                            && sbn.getPackageName().equals(pkg)) {
++                        if (sbn.getIsContentSecure() != isContentSecure ||
++                                nr.isBubbleUpSuppressedByAppLock() != isBubbleUpSuppressed) {
++                            sbn.setIsContentSecure(isContentSecure);
++                            nr.setBubbleUpSuppressedByAppLock(isBubbleUpSuppressed);
++                            mListeners.notifyPostedLocked(nr, nr);
++                        }
++                    }
++                }
++            }
++            mRankingHandler.requestSort();
++        }
+     };
+ 
+     private static boolean isBigPictureWithBitmapOrIcon(Notification n) {
+@@ -9434,9 +9472,11 @@ public class NotificationManagerService extends SystemService {
+ 
+         mUsageStats.registerEnqueuedByApp(pkg);
+ 
++        final boolean isContentSecure = mAppLockManagerService != null &&
++            mAppLockManagerService.shouldRedactNotification(pkg, userId);
+         final StatusBarNotification n = new StatusBarNotification(
+                 pkg, opPkg, id, tag, notificationUid, callingPid, notification,
+-                user, null, System.currentTimeMillis());
++                user, null, System.currentTimeMillis(), isContentSecure);
+ 
+         // setup local book-keeping
+         String channelId = notification.getChannelId();
+@@ -9478,6 +9518,8 @@ public class NotificationManagerService extends SystemService {
+         r.setPostSilently(postSilently);
+         r.setFlagBubbleRemoved(false);
+         r.setPkgAllowedAsConvo(mMsgPkgsAllowedAsConvos.contains(pkg));
++        r.setBubbleUpSuppressedByAppLock(mAppLockManagerService != null &&
++            mAppLockManagerService.requireUnlock(pkg, userId));
+         boolean isImportanceFixed = mPermissionHelper.isPermissionFixed(pkg, userId);
+         r.setImportanceFixed(isImportanceFixed);
+         if (notification.isFgsOrUij()) {
+@@ -11732,7 +11774,8 @@ public class NotificationManagerService extends SystemService {
+                         r.isConversation(),
+                         r.getProposedImportance(),
+                         r.hasSensitiveContent(),
+-                        r.getSummarization());
++                        r.getSummarization(),
++                        r.isBubbleUpSuppressedByAppLock());
+                 extractorDataBefore.put(r.getKey(), extractorData);
+                 mRankingHelper.extractSignals(r);
+             }
+diff --git a/services/core/java/com/android/server/notification/NotificationRecord.java b/services/core/java/com/android/server/notification/NotificationRecord.java
+index 56ca712a7369..3cda6e1e02b9 100644
+--- a/services/core/java/com/android/server/notification/NotificationRecord.java
++++ b/services/core/java/com/android/server/notification/NotificationRecord.java
+@@ -255,6 +255,8 @@ public final class NotificationRecord {
+     // lifetime extended.
+     private boolean mCanceledAfterLifetimeExtension = false;
+ 
++    private boolean mIsBubbleUpSuppressedByAppLock = false;
++
+     // type of the bundle if the notification was classified
+     private int mBundleType = Adjustment.TYPE_OTHER;
+ 
+@@ -2137,6 +2139,14 @@ public final class NotificationRecord {
+         mIsRealCallIncomingNotification = isRealCallIncomingNotification;
+     }
+ 
++    public void setBubbleUpSuppressedByAppLock(boolean suppressed) {
++        mIsBubbleUpSuppressedByAppLock = suppressed;
++    }
++
++    public boolean isBubbleUpSuppressedByAppLock() {
++        return mIsBubbleUpSuppressedByAppLock;
++    }
++
+     @VisibleForTesting
+     static final class Light {
+         public final int color;
+diff --git a/services/core/java/com/android/server/notification/NotificationRecordExtractorData.java b/services/core/java/com/android/server/notification/NotificationRecordExtractorData.java
+index a11d3efdc9e2..9943f3d43362 100644
+--- a/services/core/java/com/android/server/notification/NotificationRecordExtractorData.java
++++ b/services/core/java/com/android/server/notification/NotificationRecordExtractorData.java
+@@ -42,6 +42,7 @@ public final class NotificationRecordExtractorData {
+     private final ArrayList<CharSequence> mSmartReplies;
+     private final int mImportance;
+     private final int mProposedImportance;
++    private final boolean mIsBubbleUpSuppressedByAppLock;
+ 
+     // These fields may not trigger a reranking but diffs here may be logged.
+     private final float mRankingScore;
+@@ -56,7 +57,8 @@ public final class NotificationRecordExtractorData {
+             ArrayList<Notification.Action> systemSmartActions,
+             ArrayList<CharSequence> smartReplies, int importance, float rankingScore,
+             boolean isConversation, int proposedImportance, boolean sensitiveContent,
+-            String summarization) {
++            String summarization,
++            boolean isBubbleUpSuppressedByAppLock) {
+         mPosition = position;
+         mVisibility = visibility;
+         mShowBadge = showBadge;
+@@ -76,6 +78,7 @@ public final class NotificationRecordExtractorData {
+         mProposedImportance = proposedImportance;
+         mSensitiveContent = sensitiveContent;
+         mSummarization = summarization;
++        mIsBubbleUpSuppressedByAppLock = isBubbleUpSuppressedByAppLock;
+     }
+ 
+     // Returns whether the provided NotificationRecord differs from the cached data in any way.
+@@ -97,7 +100,8 @@ public final class NotificationRecordExtractorData {
+                 || mImportance != r.getImportance()
+                 || mProposedImportance != r.getProposedImportance()
+                 || mSensitiveContent != r.hasSensitiveContent()
+-                || !Objects.equals(mSummarization, r.getSummarization());
++                || !Objects.equals(mSummarization, r.getSummarization())
++                || mIsBubbleUpSuppressedByAppLock != r.isBubbleUpSuppressedByAppLock();
+     }
+ 
+     // Returns whether the NotificationRecord has a change from this data for which we should
+@@ -122,7 +126,8 @@ public final class NotificationRecordExtractorData {
+                 || mIsConversation != r.isConversation()
+                 || mProposedImportance != r.getProposedImportance()
+                 || mSensitiveContent != r.hasSensitiveContent()
+-                || !Objects.equals(mSummarization, r.getSummarization());
++                || !Objects.equals(mSummarization, r.getSummarization())
++                || mIsBubbleUpSuppressedByAppLock != r.isBubbleUpSuppressedByAppLock();
+     }
+ 
+     boolean hasBeenUnbundled(NotificationRecord r) {
+diff --git a/services/core/java/com/android/server/pm/LauncherAppsService.java b/services/core/java/com/android/server/pm/LauncherAppsService.java
+index f34ab0d73782..fb011739b4de 100644
+--- a/services/core/java/com/android/server/pm/LauncherAppsService.java
++++ b/services/core/java/com/android/server/pm/LauncherAppsService.java
+@@ -128,6 +128,7 @@ import com.android.internal.util.Preconditions;
+ import com.android.internal.util.SizedInputStream;
+ import com.android.server.LocalServices;
+ import com.android.server.SystemService;
++import com.android.server.app.AppLockManagerServiceInternal;
+ import com.android.server.pm.pkg.AndroidPackage;
+ import com.android.server.pm.pkg.ArchiveState;
+ import com.android.server.pm.pkg.PackageStateInternal;
+@@ -259,6 +260,8 @@ public class LauncherAppsService extends SystemService {
+         private final RemoteCallbackList<IDumpCallback> mDumpCallbacks =
+                 new RemoteCallbackList<>();
+ 
++        private final AppLockManagerServiceInternal mAppLockManagerInternal;
++
+         public LauncherAppsImpl(Context context) {
+             mContext = context;
+             mIPM = AppGlobals.getPackageManager();
+@@ -283,6 +286,7 @@ public class LauncherAppsService extends SystemService {
+             mCallbackHandler = BackgroundThread.getHandler();
+             mDpm = (DevicePolicyManager) mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
+             mInternal = new LocalService();
++            mAppLockManagerInternal = getAppLockInternal();
+             registerSettingsObserver();
+         }
+ 
+@@ -344,6 +348,11 @@ public class LauncherAppsService extends SystemService {
+                     == PackageManager.PERMISSION_GRANTED;
+         }
+ 
++        private AppLockManagerServiceInternal getAppLockInternal() {
++            if (mAppLockManagerInternal != null) return mAppLockManagerInternal;
++            return LocalServices.getService(AppLockManagerServiceInternal.class);
++        }
++
+         /*
+          * @see android.content.pm.ILauncherApps#addOnAppsChangedListener
+          */
+@@ -1037,6 +1046,10 @@ public class LauncherAppsService extends SystemService {
+         @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+         List<LauncherActivityInfoInternal> queryIntentLauncherActivities(
+                 Intent intent, int callingUid, int callingPid, UserHandle user) {
++            final Set<String> hiddenApps =
++                    getAppLockInternal() != null
++                            ? getAppLockInternal().getHiddenPackages(user.getIdentifier())
++                            : Collections.emptySet();
+             final List<ResolveInfo> apps = mPackageManagerInternal.queryIntentActivities(intent,
+                     intent.resolveTypeIfNeeded(mContext.getContentResolver()),
+                     PackageManager.MATCH_DIRECT_BOOT_AWARE
+@@ -1052,6 +1065,10 @@ public class LauncherAppsService extends SystemService {
+                     // should not happen
+                     continue;
+                 }
++                if (hiddenApps.contains(packageName)) {
++                    if (DEBUG) Slog.d(TAG, "Skipping package " + packageName);
++                    continue;
++                }
+                 final IncrementalStatesInfo incrementalStatesInfo =
+                         mPackageManagerInternal.getIncrementalStatesInfo(packageName, callingUid,
+                                 user.getIdentifier());
+diff --git a/services/core/java/com/android/server/trust/TrustManagerService.java b/services/core/java/com/android/server/trust/TrustManagerService.java
+index 95e622c93435..45f9c1b45678 100644
+--- a/services/core/java/com/android/server/trust/TrustManagerService.java
++++ b/services/core/java/com/android/server/trust/TrustManagerService.java
+@@ -91,6 +91,7 @@ import com.android.internal.util.DumpUtils;
+ import com.android.internal.widget.LockPatternUtils;
+ import com.android.server.LocalServices;
+ import com.android.server.SystemService;
++import com.android.server.app.AppLockManagerServiceInternal;
+ import com.android.server.locksettings.LockSettingsInternal;
+ import com.android.server.locksettings.LockSettingsStateListener;
+ import com.android.server.pm.UserManagerInternal;
+@@ -289,6 +290,8 @@ public class TrustManagerService extends SystemService {
+     private ServiceWatcher mSignificantPlaceServiceWatcher;
+     private volatile boolean mIsInSignificantPlace = false;
+ 
++    private AppLockManagerServiceInternal mAppLockManagerService = null;
++
+     /**
+      * A class for providing dependencies to {@link TrustManagerService} in both production and test
+      * cases.
+@@ -1118,7 +1121,15 @@ public class TrustManagerService extends SystemService {
+             }
+ 
+             setDeviceLockedForUser(id, deviceLocked);
++            getAppLockManagerService().notifyDeviceLocked(deviceLocked, id);
++        }
++    }
++
++    private AppLockManagerServiceInternal getAppLockManagerService() {
++        if (mAppLockManagerService == null) {
++            mAppLockManagerService = LocalServices.getService(AppLockManagerServiceInternal.class);
+         }
++        return mAppLockManagerService;
+     }
+ 
+     private void setDeviceLockedForUser(@UserIdInt int userId, boolean locked) {
+diff --git a/services/core/java/com/android/server/wm/ActivityStartInterceptor.java b/services/core/java/com/android/server/wm/ActivityStartInterceptor.java
+index 66a973e31852..50d3a800e0a4 100644
+--- a/services/core/java/com/android/server/wm/ActivityStartInterceptor.java
++++ b/services/core/java/com/android/server/wm/ActivityStartInterceptor.java
+@@ -82,6 +82,7 @@ import com.android.internal.app.SuspendedAppActivity;
+ import com.android.internal.app.UnlaunchableAppActivity;
+ import com.android.server.LocalServices;
+ import com.android.server.am.ActivityManagerService;
++import com.android.server.app.AppLockManagerServiceInternal;
+ import com.android.server.wm.ActivityInterceptorCallback.ActivityInterceptResult;
+ 
+ /**
+@@ -285,6 +286,10 @@ class ActivityStartInterceptor {
+             return true;
+         }
+ 
++        if (interceptLockedAppIfNeeded()) {
++            return true;
++        }
++
+         if (interceptDistractingPackageIfNeeded()) {
+             return true;
+         }
+@@ -833,4 +838,49 @@ class ActivityStartInterceptor {
+                 .build();
+     }
+ 
++    private AppLockManagerServiceInternal getAppLockManagerService() {
++        return mService.getAppLockManagerService();
++    }
++
++    private boolean interceptLockedAppIfNeeded() {
++        if (getAppLockManagerService() == null) return false;
++        final Intent interceptingIntent = getAppLockManagerService().interceptActivity(getInterceptorInfo(null));
++        if (interceptingIntent == null) {
++            return false;
++        }
++        mIntent = interceptingIntent;
++        mCallingPid = mRealCallingPid;
++        mCallingUid = mRealCallingUid;
++        mResolvedType = null;
++        final TaskFragment taskFragment = getLaunchTaskFragment();
++        // If we are intercepting and there was a task, convert it into an extra for the
++        // ConfirmCredentials intent and unassign it, as otherwise the task will move to
++        // front even if ConfirmCredentials is cancelled.
++        if (mInTask != null) {
++            mIntent.putExtra(EXTRA_TASK_ID, mInTask.mTaskId);
++            mInTask = null;
++        } else if (taskFragment != null) {
++            // If the original intent is started to an embedded TaskFragment, append its parent task
++            // id to extra. It is to embed back the original intent to the TaskFragment with the
++            // same task.
++            final Task parentTask = taskFragment.getTask();
++            if (parentTask != null) {
++                mIntent.putExtra(EXTRA_TASK_ID, parentTask.mTaskId);
++            }
++        }
++        if (mActivityOptions == null) {
++            mActivityOptions = ActivityOptions.makeBasic();
++        }
++
++        final UserInfo parent = mUserManager.getProfileParent(mUserId);
++        if (parent != null) {
++            mRInfo = mSupervisor.resolveIntent(mIntent, mResolvedType, parent.id, 0,
++                    mRealCallingUid, mRealCallingPid);
++        } else {
++            mRInfo = mSupervisor.resolveIntent(mIntent, mResolvedType, mUserId, 0,
++                    mRealCallingUid, mRealCallingPid);
++        }
++        mAInfo = mSupervisor.resolveActivity(mIntent, mRInfo, mStartFlags, null /*profilerInfo*/);
++        return true;
++    }
+ }
+diff --git a/services/core/java/com/android/server/wm/ActivityTaskManagerInternal.java b/services/core/java/com/android/server/wm/ActivityTaskManagerInternal.java
+index fa8a200da8cb..470fa3c0ca0d 100644
+--- a/services/core/java/com/android/server/wm/ActivityTaskManagerInternal.java
++++ b/services/core/java/com/android/server/wm/ActivityTaskManagerInternal.java
+@@ -880,4 +880,6 @@ public abstract class ActivityTaskManagerInternal implements ActiveUids.Observer
+ 
+     /** Moves all tasks from the source display to the destination display. */
+     public abstract void moveAllTasks(int fromDisplayId, int toDisplayId);
++
++    public abstract boolean isVisibleActivity(IBinder activityToken);
+ }
+diff --git a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+index 9faa5fb01351..9e00c4c35423 100644
+--- a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
++++ b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+@@ -298,6 +298,7 @@ import com.android.server.am.PendingIntentRecord;
+ import com.android.server.am.UserState;
+ import com.android.server.am.psc.ProcessRecordInternal;
+ import com.android.server.am.psc.ProcessStateController;
++import com.android.server.app.AppLockManagerServiceInternal;
+ import com.android.server.firewall.IntentFirewall;
+ import com.android.server.grammaticalinflection.GrammaticalInflectionManagerInternal;
+ import com.android.server.pm.UserManagerInternal;
+@@ -834,6 +835,7 @@ public class ActivityTaskManagerService extends IActivityTaskManager.Stub {
+     private Set<Integer> mProfileOwnerUids = new ArraySet<Integer>();
+ 
+     private CutoutFullscreenController mCutoutFullscreenController;
++    private AppLockManagerServiceInternal mAppLockManagerService = null;
+ 
+     private final class SettingObserver extends ContentObserver {
+         private final Uri mFontScaleUri = Settings.System.getUriFor(FONT_SCALE);
+@@ -6267,6 +6269,13 @@ public class ActivityTaskManagerService extends IActivityTaskManager.Stub {
+         return mWindowStyleCache.get(packageName, theme, userId);
+     }
+ 
++    AppLockManagerServiceInternal getAppLockManagerService() {
++        if (mAppLockManagerService == null) {
++            mAppLockManagerService = LocalServices.getService(AppLockManagerServiceInternal.class);
++        }
++        return mAppLockManagerService;
++    }
++
+     AppWarnings getAppWarningsLocked() {
+         return mAppWarnings;
+     }
+@@ -8490,6 +8499,14 @@ public class ActivityTaskManagerService extends IActivityTaskManager.Stub {
+         public int getLockTaskModeState() {
+             return ActivityTaskManagerService.this.getLockTaskModeState();
+         }
++
++        @Override
++        public boolean isVisibleActivity(IBinder activityToken) {
++            synchronized (mGlobalLock) {
++                final ActivityRecord r = ActivityRecord.isInRootTaskLocked(activityToken);
++                return r != null && r.isInterestingToUserLocked();
++            }
++        }
+     }
+ 
+     /** Cache the return value for {@link #isPip2ExperimentEnabled()} */
+diff --git a/services/core/java/com/android/server/wm/ActivityTaskSupervisor.java b/services/core/java/com/android/server/wm/ActivityTaskSupervisor.java
+index aa0c5b2e1607..af4b6fdac4ab 100644
+--- a/services/core/java/com/android/server/wm/ActivityTaskSupervisor.java
++++ b/services/core/java/com/android/server/wm/ActivityTaskSupervisor.java
+@@ -3023,6 +3023,14 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
+                     task.getTaskDisplayArea().moveHomeRootTaskToFront("startActivityFromRecents");
+                 }
+ 
++                final Task rootTask = task.getRootTask();
++                final String packageName =
++                    rootTask != null && rootTask.realActivity != null
++                        ? rootTask.realActivity.getPackageName()
++                        : null;
++                final boolean needAppUnlock = packageName != null
++                        && mService.getAppLockManagerService()
++                                .requireUnlock(packageName, task.mUserId);
+                 // If the user must confirm credentials (e.g. when first launching a work
+                 // app and the Work Challenge is present), or we know ActivityStartInterceptor will
+                 // intercept the launch, let startActivityInPackage handle the intercepting.
+@@ -3030,7 +3038,8 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
+                 // interceptions, and optimize so we don't have to run the interception again.
+                 if (!mService.mAmInternal.shouldConfirmCredentials(task.mUserId)
+                         && task.getRootActivity() != null
+-                        && !shouldIntercept) {
++                        && !shouldIntercept
++                        && !needAppUnlock) {
+                     final ActivityRecord targetActivity = task.getTopNonFinishingActivity();
+ 
+                     mRootWindowContainer.startPowerModeLaunchIfNeeded(
+diff --git a/services/core/java/com/android/server/wm/SnapshotController.java b/services/core/java/com/android/server/wm/SnapshotController.java
+index 3d5cc8bbfb7b..9244d9c0317e 100644
+--- a/services/core/java/com/android/server/wm/SnapshotController.java
++++ b/services/core/java/com/android/server/wm/SnapshotController.java
+@@ -427,6 +427,16 @@ class SnapshotController {
+                                 + " not found or not visible");
+                         return null;
+                     }
++                    final Task rootTask = task.getRootTask();
++                    final String packageName =
++                        rootTask != null && rootTask.realActivity != null
++                            ? rootTask.realActivity.getPackageName()
++                            : null;
++                    if (packageName != null && mService.mAtmService.getAppLockManagerService() != null
++                            && mService.mAtmService.getAppLockManagerService().requireUnlock(
++                                    packageName, task.mUserId)) {
++                        return null;
++                    }
+                     // Note that if updateCache is true, ActivityRecord#shouldUseAppThemeSnapshot
+                     // will be used to decide whether the task is allowed to be captured because
+                     // that may be retrieved by recents. While if updateCache is false, the real
+diff --git a/services/java/com/android/server/SystemServer.java b/services/java/com/android/server/SystemServer.java
+index 561e1d34f6da..970ffc06d161 100644
+--- a/services/java/com/android/server/SystemServer.java
++++ b/services/java/com/android/server/SystemServer.java
+@@ -129,6 +129,7 @@ import com.android.server.alarm.AlarmManagerService;
+ import com.android.server.allowlist.AllowlistService;
+ import com.android.server.am.ActivityManagerService;
+ import com.android.server.ambientcontext.AmbientContextManagerService;
++import com.android.server.app.AppLockManagerService;
+ import com.android.server.app.GameManagerService;
+ import com.android.server.appbinding.AppBindingService;
+ import com.android.server.appfunctions.AppFunctionManagerService;
+@@ -2877,6 +2878,11 @@ public final class SystemServer implements Dumpable {
+             }
+             t.traceEnd();
+ 
++            // LauncherAppsService uses AppLockManagerService.
++            t.traceBegin("AppLockManagerService");
++            mSystemServiceManager.startService(AppLockManagerService.Lifecycle.class);
++            t.traceEnd();
++
+             // LauncherAppsService uses ShortcutService.
+             t.traceBegin("StartShortcutServiceLifecycle");
+             mSystemServiceManager.startService(ShortcutService.Lifecycle.class);
+-- 
+2.43.0
+

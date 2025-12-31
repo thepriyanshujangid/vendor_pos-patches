@@ -1,0 +1,1652 @@
+From e49efa67efcbb697512ad6733060cb2efdfc7ec8 Mon Sep 17 00:00:00 2001
+From: jhonboy121 <alfredmathew05@gmail.com>
+Date: Thu, 24 Mar 2022 21:42:31 +0530
+Subject: [PATCH 5/5] [squash] Settings: Introduce App Lock [3/4]
+
+Squashed:
+
+* AppLockCredentialActivity is a stripped down version of ConfirmDeviceCredentialActivity in Settings
+
+Signed-off-by: jhonboy121 <alfredmathew05@gmail.com>
+Signed-off-by: Adithya R <gh0strider.2k18.reborn@gmail.com>
+
+Settings: applock: adapt for API changes
+
+Signed-off-by: jhonboy121 <alfredmathew05@gmail.com>
+
+Settings: use a new task stack for app lock fragments
+
+* fixes fragments staying in recents on going home
+* also made other preferences do binder calls asynchronously
+
+Signed-off-by: jhonboy121 <alfredmathew05@gmail.com>
+Signed-off-by: Adithya R <gh0strider.2k18.reborn@gmail.com>
+
+Settings: applock: fix unlock prompt disappearing when trying to open apps
+
+Signed-off-by: jhonboy121 <alfredmathew05@gmail.com>
+
+Settings: applock: add hidden app settings
+
+Signed-off-by: jhonboy121 <alfredmathew05@gmail.com>
+Signed-off-by: Adithya R <gh0strider.2k18.reborn@gmail.com>
+
+AppLockPackageConfigFragment: allow launching app from app icon
+
+Signed-off-by: jhonboy121 <alfredmathew05@gmail.com>
+
+FlamingoSettings: applock: early return in setChecked if backing field has the same value
+
+Signed-off-by: jhonboy121 <alfredmathew05@gmail.com>
+
+Signed-off-by: Adithya R <gh0strider.2k18.reborn@gmail.com>
+
+[nift4: drop useless plurals.xml, make timeout values translatable]
+
+* Dhina17 <dhinalogu@gmail.com>
+        applock: Adapt for Android 14
+
+neobuddy89:
+Adapted for A15.
+
+Change-Id: I85d72ee72353417ead528483bbbe1ac1e6860063
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+Signed-off-by: Ritesh <SahanyRitesh@proton.me>
+
+Settings: Allow locking all apps visible in launcher
+
+Change-Id: Ia313072b04680216545cc62dd72b1f94e4b90961
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+
+Settings: Update AppLock API
+
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+
+AppLock: Slightly bigger icon size
+
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+
+Settings: Add app lock summary for 0 protected apps
+
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+
+Settings: Let app lock use face unlock
+
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+
+Settings: Don't make app lock settings searchable
+
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+
+Settings: AppLock: Update for kotlin errors
+
+Change-Id: I7115c6e2031d613e59859710f587ee2a26614001
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+
+Settings: Move applock to apps section
+
+security advance section is too hidden
+so that users even don't know about applock.
+
+Change-Id: Iaaa2fd17befd915df485e16461abcc8ffc0f7191
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+
+Settings: Do not rely on androidx.preference_preference-ktx
+
+Change-Id: If4ce4bd02b3d2a13c83a608e5b494bada23c3d1c
+Signed-off-by: Abhay Singh Gill <abhaygill017@gmail.com>
+
+Settings: Fix metrics category for AppLock fragments
+
+Change-Id: If60add4df7b0e08355415d2c7ec7039447d63ed7
+---
+ Android.bp                                    |   5 +
+ AndroidManifest.xml                           |  23 ++
+ res/values/custom_arrays.xml                  |  21 ++
+ res/values/custom_strings.xml                 |  29 +++
+ res/xml/app_lock_package_config_settings.xml  |  45 ++++
+ res/xml/app_lock_package_list_settings.xml    |  19 ++
+ res/xml/app_lock_settings.xml                 |  44 ++++
+ res/xml/apps.xml                              |   6 +
+ res/xml/security_dashboard_settings.xml       |   5 +
+ .../applications/AppDashboardFragment.java    |  12 +-
+ .../settings/security/SecuritySettings.java   |   5 +
+ .../AppLockBiometricPreferenceController.kt   |  76 +++++++
+ .../applock/AppLockCredentialActivity.kt      | 207 ++++++++++++++++++
+ .../security/applock/AppLockHideAppPC.kt      |  70 ++++++
+ .../applock/AppLockNotificationRedactionPC.kt |  72 ++++++
+ .../applock/AppLockPackageConfigFragment.kt   |  79 +++++++
+ .../applock/AppLockPackageListFragment.kt     | 150 +++++++++++++
+ .../applock/AppLockPackageProtectionPC.kt     |  73 ++++++
+ .../applock/AppLockSettingsFragment.kt        |  86 ++++++++
+ .../AppLockSettingsPreferenceController.kt    | 131 +++++++++++
+ .../security/applock/AppLockSubSettings.kt    |  26 +++
+ .../AppLockTimeoutPreferenceController.kt     |  47 ++++
+ .../AppLockTogglePreferenceController.kt      |  49 +++++
+ 23 files changed, 1277 insertions(+), 3 deletions(-)
+ create mode 100644 res/xml/app_lock_package_config_settings.xml
+ create mode 100644 res/xml/app_lock_package_list_settings.xml
+ create mode 100644 res/xml/app_lock_settings.xml
+ create mode 100644 src/com/android/settings/security/applock/AppLockBiometricPreferenceController.kt
+ create mode 100644 src/com/android/settings/security/applock/AppLockCredentialActivity.kt
+ create mode 100644 src/com/android/settings/security/applock/AppLockHideAppPC.kt
+ create mode 100644 src/com/android/settings/security/applock/AppLockNotificationRedactionPC.kt
+ create mode 100644 src/com/android/settings/security/applock/AppLockPackageConfigFragment.kt
+ create mode 100644 src/com/android/settings/security/applock/AppLockPackageListFragment.kt
+ create mode 100644 src/com/android/settings/security/applock/AppLockPackageProtectionPC.kt
+ create mode 100644 src/com/android/settings/security/applock/AppLockSettingsFragment.kt
+ create mode 100644 src/com/android/settings/security/applock/AppLockSettingsPreferenceController.kt
+ create mode 100644 src/com/android/settings/security/applock/AppLockSubSettings.kt
+ create mode 100644 src/com/android/settings/security/applock/AppLockTimeoutPreferenceController.kt
+ create mode 100644 src/com/android/settings/security/applock/AppLockTogglePreferenceController.kt
+
+diff --git a/Android.bp b/Android.bp
+index 48d5ea12fe1..49b0ec708bc 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -130,6 +130,11 @@ android_library {
+         "dynamiccolors",
+         "com.android.text.flags-aconfig-java",
+         "custom-preference",
++        "androidx.fragment_fragment",
++        "androidx.fragment_fragment-ktx",
++        "kotlin-stdlib",
++        "kotlinx_coroutines_android",
++        "kotlinx_coroutines",
+     ],
+ 
+     plugins: [
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 23e503b18fa..cf2459cf0c0 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -156,6 +156,9 @@
+     <!-- LiveDisplay -->
+     <uses-permission android:name="lineageos.permission.MANAGE_LIVEDISPLAY" />
+ 
++    <!-- App lock -->
++    <uses-permission android:name="android.permission.MANAGE_APP_LOCK" />
++
+     <application
+             android:name=".SettingsApplication"
+             android:label="@string/settings_label"
+@@ -6406,5 +6409,25 @@
+             </intent-filter>
+         </receiver>
+ 
++        <!-- App lock -->
++        <activity android:name=".security.applock.AppLockCredentialActivity"
++            android:exported="false"
++            android:permission="android.permission.MANAGE_APP_LOCK"
++            android:excludeFromRecents="true"
++            android:stateNotNeeded="true"
++            android:taskAffinity="com.android.settings.applock"
++            android:launchMode="singleInstance"
++            android:theme="@android:style/Theme.Translucent.NoTitleBar">
++            <intent-filter>
++                <action android:name="android.app.action.UNLOCK_APP" />
++                <category android:name="android.intent.category.DEFAULT" />
++            </intent-filter>
++        </activity>
++
++        <activity android:name=".security.applock.AppLockSubSettings"
++            android:exported="false"
++            android:excludeFromRecents="true"
++            android:taskAffinity="com.android.settings.applock"
++            android:launchMode="singleTask" />
+     </application>
+ </manifest>
+diff --git a/res/values/custom_arrays.xml b/res/values/custom_arrays.xml
+index 37777f20fd4..6b5e6ff7e8a 100644
+--- a/res/values/custom_arrays.xml
++++ b/res/values/custom_arrays.xml
+@@ -103,4 +103,25 @@
+         <item>es-US</item>
+     </array>
+ 
++    <!-- App lock timeout -->
++    <string-array name="app_lock_timeout_entries">
++        <item>@string/custom_timeout_summary_5secs</item>
++        <item>@string/custom_timeout_summary_10secs</item>
++        <item>@string/custom_timeout_summary_30secs</item>
++        <item>@string/custom_timeout_summary_1min</item>
++        <item>@string/custom_timeout_summary_5mins</item>
++        <item>@string/custom_timeout_summary_10mins</item>
++        <item>@string/custom_timeout_summary_30mins</item>
++    </string-array>
++
++    <string-array name="app_lock_timeout_values" translatable="false">
++        <item>5000</item>
++        <item>10000</item>
++        <item>30000</item>
++        <item>60000</item>
++        <item>300000</item>
++        <item>600000</item>
++        <item>1800000</item>
++    </string-array>
++
+ </resources>
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index 4ccb7823181..2f8e9aa4d01 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -421,5 +421,34 @@
+     <string name="search_apps">Search apps</string>
+     <string name="hide_developer_status_title">Hide developer status</string>
+     <string name="hide_developer_status_summary">Hide developer status from apps</string>
++    
++    <!-- App lock -->
++    <string name="app_lock_title">App lock</string>
++    <plurals name="app_lock_summary">
++        <item quantity="one"><xliff:g example="1" id="Number of applications">%1$d</xliff:g> application is protected</item>
++        <item quantity="other"><xliff:g example="10" id="Number of applications">%1$d</xliff:g> applications are protected</item>
++    </plurals>
++    <string name="app_lock_authentication_dialog_title">Unlock</string>
++    <string name="enable_debugging">Enable debugging</string>
++    <string name="disable_debugging">Disable debugging</string>
++    <string name="app_lock_packages_title">Protected apps</string>
++    <string name="app_lock_packages_summary">Select the apps to protect with biometrics or device credentials</string>
++    <string name="app_lock_timeout_title">Auto lock timeout</string>
++    <string name="app_lock_timeout_summary">Duration of time after which an unlocked app in background should be locked</string>
++    <string name="app_lock_notifications_title">Redact notifications</string>
++    <string name="app_lock_notifications_summary">Notification content will be hidden and collapsed for selected apps when they are locked. Heads up notifications will be automatically disabled.</string>
++    <string name="app_lock_notifications_disabled_summary">Protect an application first</string>
++    <string name="app_lock_biometrics_allowed_title">Enable biometrics for unlocking</string>
++    <string name="app_lock_footer_text">Bubbles will be automatically dismissed after timeout</string>
++    <string name="enable_protection">Enable protection</string>
++    <string name="hide_from_launcher_title">Hide from launcher</string>
++    <string name="hide_from_launcher_summary">Prevent this application from showing up in any launcher. Requires a launcher restart for changes to take effect.</string>
++    <string name="custom_timeout_summary_5secs">5 seconds</string>
++    <string name="custom_timeout_summary_10secs">10 seconds</string>
++    <string name="custom_timeout_summary_30secs">30 seconds</string>
++    <string name="custom_timeout_summary_1min">1 minute</string>
++    <string name="custom_timeout_summary_5mins">5 minutes</string>
++    <string name="custom_timeout_summary_10mins">10 minutes</string>
++    <string name="custom_timeout_summary_30mins">30 minutes</string>
+ 
+ </resources>
+diff --git a/res/xml/app_lock_package_config_settings.xml b/res/xml/app_lock_package_config_settings.xml
+new file mode 100644
+index 00000000000..42d2368a3b7
+--- /dev/null
++++ b/res/xml/app_lock_package_config_settings.xml
+@@ -0,0 +1,45 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (C) 2022 FlamingoOS Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:settings="http://schemas.android.com/apk/res-auto">
++
++    <com.android.settingslib.widget.LayoutPreference
++        android:key="header_view"
++        android:layout="@layout/settings_entity_header"
++        android:selectable="false" />
++
++    <com.android.settingslib.widget.MainSwitchPreference
++        android:key="main_switch"
++        android:title="@string/enable_protection" />
++
++    <SwitchPreferenceCompat
++        android:key="redact_notifications"
++        android:title="@string/app_lock_notifications_title"
++        android:summary="@string/app_lock_notifications_summary"
++        android:dependency="main_switch" />
++
++    <SwitchPreferenceCompat
++        android:key="hide_from_launcher"
++        android:title="@string/hide_from_launcher_title"
++        android:summary="@string/hide_from_launcher_summary" />
++
++    <com.android.settingslib.widget.FooterPreference
++        android:title="@string/app_lock_footer_text"
++        android:selectable="false"
++        android:dependency="main_switch"
++        settings:searchable="false" />
++
++</PreferenceScreen>
+diff --git a/res/xml/app_lock_package_list_settings.xml b/res/xml/app_lock_package_list_settings.xml
+new file mode 100644
+index 00000000000..13994b3681f
+--- /dev/null
++++ b/res/xml/app_lock_package_list_settings.xml
+@@ -0,0 +1,19 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (C) 2022 FlamingoOS Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:settings="http://schemas.android.com/apk/res-auto"
++    android:title="@string/app_lock_packages_title">
++</PreferenceScreen>
+diff --git a/res/xml/app_lock_settings.xml b/res/xml/app_lock_settings.xml
+new file mode 100644
+index 00000000000..076dfa99b36
+--- /dev/null
++++ b/res/xml/app_lock_settings.xml
+@@ -0,0 +1,44 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (C) 2022 FlamingoOS Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:settings="http://schemas.android.com/apk/res-auto"
++    android:title="@string/app_lock_title">
++
++    <Preference
++        android:key="app_lock_packages"
++        android:title="@string/app_lock_packages_title"
++        android:summary="@string/app_lock_packages_summary"
++        settings:searchable="false"
++        android:fragment="com.android.settings.security.applock.AppLockPackageListFragment" />
++
++    <ListPreference
++        android:key="app_lock_timeout"
++        android:title="@string/app_lock_timeout_title"
++        android:summary="@string/app_lock_timeout_summary"
++        android:entries="@array/app_lock_timeout_entries"
++        android:entryValues="@array/app_lock_timeout_values"
++        android:defaultValue="0"
++        android:persistent="false"
++        settings:searchable="false"
++        settings:controller="com.android.settings.security.applock.AppLockTimeoutPreferenceController" />
++
++    <SwitchPreferenceCompat
++        android:key="app_lock_biometrics_allowed"
++        android:title="@string/app_lock_biometrics_allowed_title"
++        settings:searchable="false"
++        android:persistent="false" />
++
++</PreferenceScreen>
+diff --git a/res/xml/apps.xml b/res/xml/apps.xml
+index b6874973b22..3d99483b9c4 100644
+--- a/res/xml/apps.xml
++++ b/res/xml/apps.xml
+@@ -75,6 +75,12 @@
+             android:targetPackage="${applicationId}"/>
+     </Preference>
+ 
++    <!-- App lock -->
++    <com.android.settingslib.RestrictedPreference
++        android:key="app_lock"
++        android:title="@string/app_lock_title"
++        android:order="-994" />
++
+     <PreferenceCategory
+         android:key="dashboard_tile_placeholder"
+         android:order="10"/>
+diff --git a/res/xml/security_dashboard_settings.xml b/res/xml/security_dashboard_settings.xml
+index 3bb7d69bf0d..6953660e12a 100644
+--- a/res/xml/security_dashboard_settings.xml
++++ b/res/xml/security_dashboard_settings.xml
+@@ -60,6 +60,11 @@
+             android:title="@string/security_settings_biometric_preference_title"
+             android:summary="@string/summary_placeholder"
+             settings:keywords="@string/keywords_biometric_settings" />
++
++        <!-- App lock -->
++        <com.android.settingslib.RestrictedPreference
++            android:key="app_lock"
++            android:title="@string/app_lock_title" />
+     </PreferenceCategory>
+ 
+     <Preference
+diff --git a/src/com/android/settings/applications/AppDashboardFragment.java b/src/com/android/settings/applications/AppDashboardFragment.java
+index c795232c592..e4a8492617c 100644
+--- a/src/com/android/settings/applications/AppDashboardFragment.java
++++ b/src/com/android/settings/applications/AppDashboardFragment.java
+@@ -28,8 +28,10 @@ import com.android.settings.R;
+ import com.android.settings.applications.appcompat.UserAspectRatioAppsPreferenceController;
+ import com.android.settings.dashboard.DashboardFragment;
+ import com.android.settings.search.BaseSearchIndexProvider;
++import com.android.settings.security.applock.AppLockSettingsPreferenceController;
+ import com.android.settings.widget.PreferenceCategoryController;
+ import com.android.settingslib.core.AbstractPreferenceController;
++import com.android.settingslib.core.lifecycle.Lifecycle;
+ import com.android.settingslib.search.SearchIndexable;
+ 
+ import java.util.ArrayList;
+@@ -44,9 +46,11 @@ public class AppDashboardFragment extends DashboardFragment {
+     private static final String TAG = "AppDashboardFragment";
+     private static final String ADVANCED_CATEGORY_KEY = "advanced_category";
+     private static final String ASPECT_RATIO_PREF_KEY = "aspect_ratio_apps";
++    private static final String APP_LOCK_PREF_KEY = "app_lock";
+     private AppsPreferenceController mAppsPreferenceController;
+ 
+-    private static List<AbstractPreferenceController> buildPreferenceControllers(Context context) {
++    private static List<AbstractPreferenceController> buildPreferenceControllers(Context context,
++            DashboardFragment host, Lifecycle lifecycle) {
+         final List<AbstractPreferenceController> controllers = new ArrayList<>();
+         controllers.add(new AppsPreferenceController(context));
+ 
+@@ -56,6 +60,8 @@ public class AppDashboardFragment extends DashboardFragment {
+                 new AdvancedAppsPreferenceCategoryController(context, ADVANCED_CATEGORY_KEY);
+         advancedCategoryController.setChildren(List.of(aspectRatioAppsPreferenceController));
+         controllers.add(advancedCategoryController);
++        controllers.add(new AppLockSettingsPreferenceController(
++                context, APP_LOCK_PREF_KEY, host, lifecycle));
+         return controllers;
+     }
+ 
+@@ -103,7 +109,7 @@ public class AppDashboardFragment extends DashboardFragment {
+ 
+     @Override
+     protected List<AbstractPreferenceController> createPreferenceControllers(Context context) {
+-        return buildPreferenceControllers(context);
++        return buildPreferenceControllers(context, this /* host */, getSettingsLifecycle());
+     }
+ 
+     public static final BaseSearchIndexProvider SEARCH_INDEX_DATA_PROVIDER =
+@@ -119,7 +125,7 @@ public class AppDashboardFragment extends DashboardFragment {
+                 @Override
+                 public List<AbstractPreferenceController> createPreferenceControllers(
+                         Context context) {
+-                    return buildPreferenceControllers(context);
++                    return buildPreferenceControllers(context, null /* host */, null);
+                 }
+             };
+ }
+diff --git a/src/com/android/settings/security/SecuritySettings.java b/src/com/android/settings/security/SecuritySettings.java
+index 797d3ec621e..37714095b02 100644
+--- a/src/com/android/settings/security/SecuritySettings.java
++++ b/src/com/android/settings/security/SecuritySettings.java
+@@ -32,6 +32,7 @@ import com.android.settings.dashboard.DashboardFragment;
+ import com.android.settings.overlay.FeatureFactory;
+ import com.android.settings.safetycenter.SafetyCenterManagerWrapper;
+ import com.android.settings.search.BaseSearchIndexProvider;
++import com.android.settings.security.applock.AppLockSettingsPreferenceController;
+ import com.android.settings.security.trustagent.TrustAgentListPreferenceController;
+ import com.android.settings.widget.PreferenceCategoryController;
+ import com.android.settingslib.core.AbstractPreferenceController;
+@@ -55,6 +56,8 @@ public class SecuritySettings extends DashboardFragment {
+     @VisibleForTesting
+     static final String KEY_FACE_SETTINGS = "face_settings";
+ 
++    private static final String APP_LOCK_PREF_KEY = "app_lock";
++
+     @Override
+     public int getMetricsCategory() {
+         return SettingsEnums.SECURITY;
+@@ -116,6 +119,8 @@ public class SecuritySettings extends DashboardFragment {
+         securityPreferenceControllers.add(new ChangeScreenLockPreferenceController(context, host));
+         controllers.add(new PreferenceCategoryController(context, SECURITY_CATEGORY)
+                 .setChildren(securityPreferenceControllers));
++        controllers.add(new AppLockSettingsPreferenceController(
++                context, APP_LOCK_PREF_KEY, host, lifecycle));
+         controllers.addAll(securityPreferenceControllers);
+ 
+         return controllers;
+diff --git a/src/com/android/settings/security/applock/AppLockBiometricPreferenceController.kt b/src/com/android/settings/security/applock/AppLockBiometricPreferenceController.kt
+new file mode 100644
+index 00000000000..3ce93cef328
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockBiometricPreferenceController.kt
+@@ -0,0 +1,76 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock
++
++import android.app.AppLockManager
++import android.content.Context
++import android.hardware.biometrics.BiometricManager
++import android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_STRONG
++
++import androidx.preference.Preference
++import androidx.preference.PreferenceScreen
++
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.launch
++import kotlinx.coroutines.withContext
++
++private const val KEY = "app_lock_biometrics_allowed"
++
++class AppLockBiometricPreferenceController(
++    context: Context,
++    private val coroutineScope: CoroutineScope
++) : AppLockTogglePreferenceController(context, KEY) {
++
++    private val appLockManager = context.getSystemService(AppLockManager::class.java)!!
++    private val biometricManager = context.getSystemService(BiometricManager::class.java)!!
++
++    private var preference: Preference? = null
++    private var isBiometricsAllowed = false
++
++    init {
++        coroutineScope.launch {
++            isBiometricsAllowed = withContext(Dispatchers.Default) {
++                appLockManager.isBiometricsAllowed()
++            }
++            preference?.let {
++                updateState(it)
++            }
++        }
++    }
++
++    override fun getAvailabilityStatus(): Int {
++        val result = biometricManager.canAuthenticate(BIOMETRIC_STRONG)
++        return if (result == BiometricManager.BIOMETRIC_SUCCESS) AVAILABLE else CONDITIONALLY_UNAVAILABLE
++    }
++
++    override fun isChecked() = isBiometricsAllowed
++
++    override fun setChecked(checked: Boolean): Boolean {
++        if (isBiometricsAllowed == checked) return false
++        isBiometricsAllowed = checked
++        coroutineScope.launch(Dispatchers.Default) {
++            appLockManager.setBiometricsAllowed(isBiometricsAllowed)
++        }
++        return true
++    }
++
++    override fun displayPreference(screen: PreferenceScreen) {
++        super.displayPreference(screen)
++        preference = screen.findPreference(preferenceKey)
++    }
++}
+diff --git a/src/com/android/settings/security/applock/AppLockCredentialActivity.kt b/src/com/android/settings/security/applock/AppLockCredentialActivity.kt
+new file mode 100644
+index 00000000000..e794f5f9104
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockCredentialActivity.kt
+@@ -0,0 +1,207 @@
++/*
++ * Copyright (C) 2014 The Android Open Source Project
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock
++
++import android.app.Activity
++import android.app.AppLockManager
++import android.content.Context
++import android.content.Intent
++import android.graphics.Color
++import android.hardware.biometrics.BiometricConstants
++import android.hardware.biometrics.BiometricManager.Authenticators
++import android.hardware.biometrics.BiometricPrompt
++import android.hardware.biometrics.BiometricPrompt.AuthenticationCallback
++import android.hardware.biometrics.PromptInfo
++import android.os.Bundle
++import android.os.Handler
++import android.os.Looper
++import android.os.UserHandle.USER_NULL
++import android.os.UserManager
++import android.util.Log
++import android.view.WindowManager
++
++import androidx.fragment.app.commit
++import androidx.fragment.app.FragmentActivity
++
++import com.android.internal.widget.LockPatternUtils
++import com.android.settings.R
++import com.android.settings.password.BiometricFragment
++import com.android.settings.password.ConfirmDeviceCredentialUtils
++
++class AppLockCredentialActivity : FragmentActivity() {
++
++    private val handler = Handler(Looper.getMainLooper())
++
++    private lateinit var lockPatternUtils: LockPatternUtils
++    private lateinit var userManager: UserManager
++    private lateinit var appLockManager: AppLockManager
++
++    private var packageName: String? = null
++    private var label: String? = null
++    private var userId: Int = USER_NULL
++    private var biometricFragment: BiometricFragment? = null
++    private var goingToBackground = false
++    private var waitingForBiometricCallback = false
++
++    private val authenticationCallback = object : AuthenticationCallback() {
++        override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
++            if (!goingToBackground) {
++                waitingForBiometricCallback = false
++                if (errorCode == BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED
++                        || errorCode == BiometricPrompt.BIOMETRIC_ERROR_CANCELED) {
++                    finish()
++                }
++            } else if (waitingForBiometricCallback) { // goingToBackground is true
++                waitingForBiometricCallback = false
++                finish()
++            }
++        }
++
++        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
++            waitingForBiometricCallback = false
++            packageName?.let { nonNullPackageName ->
++                appLockManager.unlockPackage(nonNullPackageName)
++            }
++            ConfirmDeviceCredentialUtils.checkForPendingIntent(this@AppLockCredentialActivity)
++            setResult(Activity.RESULT_OK)
++            finish()
++        }
++
++        override fun onAuthenticationFailed() {
++            waitingForBiometricCallback = false
++        }
++
++        override fun onSystemEvent(event: Int) {
++            if (event == BiometricConstants.BIOMETRIC_SYSTEM_EVENT_EARLY_USER_CANCEL) {
++                finish()
++            }
++        }
++    }
++
++    override protected fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++
++        window.apply {
++            addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
++            statusBarColor = Color.TRANSPARENT
++        }
++
++        appLockManager = getSystemService(AppLockManager::class.java)!!
++        userManager = UserManager.get(this)
++        lockPatternUtils = LockPatternUtils(this)
++
++        packageName = intent.getStringExtra(Intent.EXTRA_PACKAGE_NAME)
++        if (packageName == null) {
++            Log.e(TAG, "Failed to get package name, aborting unlock")
++            finish()
++            return
++        }
++
++        label = intent.getStringExtra(AppLockManager.EXTRA_PACKAGE_LABEL)
++
++        userId = intent.getIntExtra(Intent.EXTRA_USER_ID, USER_NULL)
++        if (userId == USER_NULL) {
++            Log.e(TAG, "Invalid user id, aborting")
++            finish()
++            return
++        }
++
++        val biometricsAllowed = intent.getBooleanExtra(
++            AppLockManager.EXTRA_ALLOW_BIOMETRICS,
++            AppLockManager.DEFAULT_BIOMETRICS_ALLOWED
++        )
++        var allowedAuthenticators = Authenticators.DEVICE_CREDENTIAL
++        if (biometricsAllowed) {
++            allowedAuthenticators = allowedAuthenticators or Authenticators.BIOMETRIC_WEAK
++        }
++
++        val promptInfo = PromptInfo().apply {
++            title = getString(com.android.internal.R.string.unlock_application, label)
++            isDisallowBiometricsIfPolicyExists = true
++            authenticators = allowedAuthenticators
++            isAllowBackgroundAuthentication = true
++        }
++
++        if (isBiometricAllowed()) {
++            // Don't need to check if biometrics / pin/pattern/pass are enrolled. It will go to
++            // onAuthenticationError and do the right thing automatically.
++            showBiometricPrompt(promptInfo)
++            waitingForBiometricCallback = true
++        } else {
++            finish()
++        }
++    }
++
++    override protected fun onStart() {
++        super.onStart()
++        // Translucent activity that is "visible", so it doesn't complain about finish()
++        // not being called before onResume().
++        setVisible(true)
++    }
++
++    override fun onPause() {
++        super.onPause()
++        if (!isChangingConfigurations()) {
++            goingToBackground = true
++            if (!waitingForBiometricCallback) {
++                finish()
++            }
++        } else {
++            goingToBackground = false
++        }
++    }
++
++    // User could be locked while Effective user is unlocked even though the effective owns the
++    // credential. Otherwise, biometric can't unlock fbe/keystore through
++    // verifyTiedProfileChallenge. In such case, we also wanna show the user message that
++    // biometric is disabled due to device restart.
++    private fun isStrongAuthRequired() =
++        !lockPatternUtils.isBiometricAllowedForUser(userId) ||
++            !userManager.isUserUnlocked(userId)
++
++    private fun isBiometricAllowed() =
++        !isStrongAuthRequired() && !lockPatternUtils.hasPendingEscrowToken(userId)
++
++    private fun showBiometricPrompt(promptInfo: PromptInfo) {
++        biometricFragment = supportFragmentManager.findFragmentByTag(TAG_BIOMETRIC_FRAGMENT)
++            as? BiometricFragment
++        var newFragment = false
++        if (biometricFragment == null) {
++            biometricFragment = BiometricFragment.newInstance(promptInfo)
++            newFragment = true
++        }
++        biometricFragment?.also {
++            it.setCallbacks({
++                handler.post(it)
++            }, authenticationCallback)
++            it.setUser(userId)
++        }
++        if (newFragment) {
++            biometricFragment?.let {
++                supportFragmentManager.commit {
++                    add(it, TAG_BIOMETRIC_FRAGMENT)
++                }
++            }
++        }
++    }
++
++    companion object {
++        private const val TAG = "AppLockCredentialActivity"
++        private const val TAG_BIOMETRIC_FRAGMENT = "fragment"
++    }
++}
+diff --git a/src/com/android/settings/security/applock/AppLockHideAppPC.kt b/src/com/android/settings/security/applock/AppLockHideAppPC.kt
+new file mode 100644
+index 00000000000..b65534e0aed
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockHideAppPC.kt
+@@ -0,0 +1,70 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock
++
++import android.app.AppLockManager
++import android.content.Context
++
++import androidx.preference.Preference
++import androidx.preference.PreferenceScreen
++
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.launch
++import kotlinx.coroutines.withContext
++
++private const val KEY = "hide_from_launcher"
++
++class AppLockHideAppPC(
++    context: Context,
++    private val packageName: String,
++    private val coroutineScope: CoroutineScope
++) : AppLockTogglePreferenceController(context, KEY) {
++
++    private val appLockManager = context.getSystemService(AppLockManager::class.java)!!
++    private var hideFromLauncher = AppLockManager.DEFAULT_HIDE_IN_LAUNCHER
++    private var preference: Preference? = null
++
++    init {
++        coroutineScope.launch {
++            hideFromLauncher = withContext(Dispatchers.Default) {
++                appLockManager.hiddenPackages.any { it == packageName }
++            }
++            preference?.let {
++                updateState(it)
++            }
++        }
++    }
++
++    override fun getAvailabilityStatus() = AVAILABLE
++
++    override fun isChecked() = hideFromLauncher
++
++    override fun setChecked(checked: Boolean): Boolean {
++        if (hideFromLauncher == checked) return false
++        hideFromLauncher = checked
++        coroutineScope.launch(Dispatchers.Default) {
++            appLockManager.setPackageHidden(packageName, hideFromLauncher)
++        }
++        return true
++    }
++
++    override fun displayPreference(screen: PreferenceScreen) {
++        super.displayPreference(screen)
++        preference = screen.findPreference(preferenceKey)
++    }
++}
+diff --git a/src/com/android/settings/security/applock/AppLockNotificationRedactionPC.kt b/src/com/android/settings/security/applock/AppLockNotificationRedactionPC.kt
+new file mode 100644
+index 00000000000..8fc0d901d63
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockNotificationRedactionPC.kt
+@@ -0,0 +1,72 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock
++
++import android.app.AppLockManager
++import android.content.Context
++
++import androidx.preference.Preference
++import androidx.preference.PreferenceScreen
++
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.launch
++import kotlinx.coroutines.withContext
++
++private const val KEY = "redact_notifications"
++
++class AppLockNotificationRedactionPC(
++    context: Context,
++    private val packageName: String,
++    private val coroutineScope: CoroutineScope
++) : AppLockTogglePreferenceController(context, KEY) {
++
++    private val appLockManager = context.getSystemService(AppLockManager::class.java)!!
++    private var shouldRedactNotification = AppLockManager.DEFAULT_REDACT_NOTIFICATION
++    private var preference: Preference? = null
++
++    init {
++        coroutineScope.launch {
++            shouldRedactNotification = withContext(Dispatchers.Default) {
++                appLockManager.packageData.find {
++                    it.packageName == packageName
++                }?.shouldRedactNotification == true
++            }
++            preference?.let {
++                updateState(it)
++            }
++        }
++    }
++
++    override fun getAvailabilityStatus() = AVAILABLE
++
++    override fun isChecked() = shouldRedactNotification
++
++    override fun setChecked(checked: Boolean): Boolean {
++        if (shouldRedactNotification == checked) return false
++        shouldRedactNotification = checked
++        coroutineScope.launch(Dispatchers.Default) {
++            appLockManager.setShouldRedactNotification(packageName, checked)
++        }
++        return true
++    }
++
++    override fun displayPreference(screen: PreferenceScreen) {
++        super.displayPreference(screen)
++        preference = screen.findPreference(preferenceKey)
++    }
++}
+diff --git a/src/com/android/settings/security/applock/AppLockPackageConfigFragment.kt b/src/com/android/settings/security/applock/AppLockPackageConfigFragment.kt
+new file mode 100644
+index 00000000000..b0d3e20014b
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockPackageConfigFragment.kt
+@@ -0,0 +1,79 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock
++
++import android.content.Context
++import android.content.pm.PackageInfo
++import android.content.pm.PackageManager
++import android.os.Bundle
++
++import androidx.lifecycle.lifecycleScope
++
++import com.android.internal.logging.nano.MetricsProto
++
++import com.android.settings.R
++import com.android.settings.dashboard.DashboardFragment
++import com.android.settings.widget.EntityHeaderController
++import com.android.settingslib.applications.ApplicationsState.AppEntry
++import com.android.settingslib.core.AbstractPreferenceController
++import com.android.settingslib.widget.LayoutPreference
++
++private val TAG = AppLockPackageConfigFragment::class.simpleName
++private const val KEY_HEADER = "header_view"
++
++class AppLockPackageConfigFragment : DashboardFragment() {
++
++    private lateinit var packageInfo: PackageInfo
++
++    override fun onAttach(context: Context) {
++        packageInfo = arguments?.getParcelable(PACKAGE_INFO, PackageInfo::class.java)!!
++        super.onAttach(context)
++    }
++
++    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
++        super.onCreatePreferences(savedInstanceState, rootKey)
++        val appEntry = AppEntry(requireContext(), packageInfo.applicationInfo, 0)
++        val header = preferenceScreen.findPreference<LayoutPreference>(KEY_HEADER)
++        EntityHeaderController.newInstance(
++            requireActivity(),
++            this,
++            header?.findViewById(R.id.entity_header)
++        ).setPackageName(packageInfo.packageName)
++            .setButtonActions(
++                EntityHeaderController.ActionType.ACTION_NONE,
++                EntityHeaderController.ActionType.ACTION_NONE
++            )
++            .bindHeaderButtons()
++            .setLabel(appEntry)
++            .setIcon(appEntry)
++            .done(false /* rebindActions */)
++    }
++
++    override protected fun createPreferenceControllers(
++        context: Context
++    ) : List<AbstractPreferenceController> = listOf(
++        AppLockPackageProtectionPC(context, packageInfo.packageName, lifecycleScope),
++        AppLockNotificationRedactionPC(context, packageInfo.packageName, lifecycleScope),
++        AppLockHideAppPC(context, packageInfo.packageName, lifecycleScope)
++    )
++
++    override fun getMetricsCategory(): Int = MetricsProto.MetricsEvent.VIEW_UNKNOWN
++
++    override protected fun getPreferenceScreenResId() = R.xml.app_lock_package_config_settings
++
++    override protected fun getLogTag() = TAG
++}
+diff --git a/src/com/android/settings/security/applock/AppLockPackageListFragment.kt b/src/com/android/settings/security/applock/AppLockPackageListFragment.kt
+new file mode 100644
+index 00000000000..516d481c8f0
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockPackageListFragment.kt
+@@ -0,0 +1,150 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock
++
++import android.app.AppLockManager
++import android.content.Context
++import android.content.pm.PackageInfo
++import android.content.pm.PackageManager
++import android.content.pm.PackageManager.PackageInfoFlags
++import android.os.Bundle
++import android.view.View
++
++import androidx.lifecycle.lifecycleScope
++import androidx.preference.Preference
++
++import com.android.internal.logging.nano.MetricsProto
++import com.android.internal.util.clover.CloverUtils
++
++import com.android.settings.R
++import com.android.settings.core.SubSettingLauncher
++import com.android.settings.dashboard.DashboardFragment
++import com.android.settingslib.PrimarySwitchPreference
++import com.android.settingslib.widget.TwoTargetPreference.ICON_SIZE_MEDIUM
++
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.launch
++import kotlinx.coroutines.withContext
++
++private val TAG = AppLockPackageListFragment::class.simpleName
++internal const val PACKAGE_INFO = "package_info"
++
++class AppLockPackageListFragment : DashboardFragment() {
++
++    private lateinit var appLockManager: AppLockManager
++    private lateinit var pm: PackageManager
++    private lateinit var whiteListedPackages: Array<String>
++    private lateinit var launchablePackages: List<String>
++
++    override fun onAttach(context: Context) {
++        super.onAttach(context)
++        appLockManager = context.getSystemService(AppLockManager::class.java)!!
++        pm = context.packageManager
++        launchablePackages = CloverUtils.launchablePackages(context)
++        whiteListedPackages = resources.getStringArray(
++            com.android.internal.R.array.config_appLockAllowedSystemApps)
++    }
++
++    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
++        super.onCreatePreferences(savedInstanceState, rootKey)
++        lifecycleScope.launch {
++            val selectedPackages = getSelectedPackages()
++            val preferences = withContext(Dispatchers.Default) {
++                pm.getInstalledPackages(
++                    PackageInfoFlags.of(PackageManager.MATCH_ALL.toLong())
++                ).filter { packageInfo ->
++                    val isSystemApp = packageInfo.applicationInfo?.isSystemApp ?: false
++                    !isSystemApp || launchablePackages.contains(packageInfo.packageName) ||
++                        whiteListedPackages.contains(packageInfo.packageName)
++                }.sortedWith { first, second ->
++                    getLabel(first).compareTo(getLabel(second))
++                }
++            }.map { packageInfo ->
++                createPreference(packageInfo, selectedPackages.contains(packageInfo.packageName))
++            }
++            preferenceScreen?.let { preferenceScreen ->
++                for (pref in preferences) {
++                    preferenceScreen.addPreference(pref)
++                }
++            }
++        }
++    }
++
++    override fun onResume() {
++        super.onResume()
++        lifecycleScope.launch {
++            val selectedPackages = getSelectedPackages()
++            preferenceScreen?.let { preferenceScreen ->
++                for (i in 0 until preferenceScreen.preferenceCount) {
++                    val pref = preferenceScreen.getPreference(i)
++                    if (pref is PrimarySwitchPreference) {
++                        pref.isChecked = selectedPackages.contains(pref.key)
++                    }
++                }
++            }
++        }
++    }
++
++    private suspend fun getSelectedPackages(): Set<String> {
++        return withContext(Dispatchers.IO) {
++            appLockManager.packageData.filter {
++                it.shouldProtectApp == true
++            }.map {
++                it.packageName
++            }.toSet()
++        }
++    }
++
++    private fun getLabel(packageInfo: PackageInfo) =
++        packageInfo.applicationInfo?.loadLabel(pm).toString()
++
++    private fun createPreference(packageInfo: PackageInfo, isProtected: Boolean): Preference {
++        val label = getLabel(packageInfo)
++        return PrimarySwitchPreference(requireContext()).apply {
++            key = packageInfo.packageName
++            title = label
++            icon = packageInfo.applicationInfo?.loadIcon(pm)
++            setIconSize(ICON_SIZE_MEDIUM)
++            isChecked = isProtected
++            setOnPreferenceChangeListener { _, newValue ->
++                lifecycleScope.launch(Dispatchers.IO) {
++                    appLockManager.setShouldProtectApp(packageInfo.packageName, newValue as Boolean)
++                }
++                return@setOnPreferenceChangeListener true
++            }
++            setOnPreferenceClickListener {
++                SubSettingLauncher(requireContext())
++                    .setDestination(AppLockPackageConfigFragment::class.qualifiedName)
++                    .setSourceMetricsCategory(metricsCategory)
++                    .setTitleText(label)
++                    .setArguments(
++                        Bundle(1).apply {
++                            putParcelable(PACKAGE_INFO, packageInfo)
++                        }
++                    )
++                    .launch()
++                true
++            }
++        }
++    }
++
++    override fun getMetricsCategory(): Int = MetricsProto.MetricsEvent.VIEW_UNKNOWN
++
++    override protected fun getPreferenceScreenResId() = R.xml.app_lock_package_list_settings
++
++    override protected fun getLogTag() = TAG
++}
+diff --git a/src/com/android/settings/security/applock/AppLockPackageProtectionPC.kt b/src/com/android/settings/security/applock/AppLockPackageProtectionPC.kt
+new file mode 100644
+index 00000000000..7b92f68b65c
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockPackageProtectionPC.kt
+@@ -0,0 +1,73 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock
++
++import android.app.AppLockManager
++import android.content.Context
++
++import androidx.lifecycle.lifecycleScope
++import androidx.preference.Preference
++import androidx.preference.PreferenceScreen
++
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.launch
++import kotlinx.coroutines.withContext
++
++private const val KEY = "main_switch"
++
++class AppLockPackageProtectionPC(
++    context: Context,
++    private val packageName: String,
++    private val coroutineScope: CoroutineScope
++) : AppLockTogglePreferenceController(context, KEY) {
++
++    private val appLockManager = context.getSystemService(AppLockManager::class.java)!!
++    private var isProtected = false
++    private var preference: Preference? = null
++
++    init {
++        coroutineScope.launch {
++            isProtected = withContext(Dispatchers.Default) {
++                appLockManager.packageData.find {
++                    it.packageName == packageName
++                }?.shouldProtectApp == true
++            }
++            preference?.let {
++                updateState(it)
++            }
++        }
++    }
++
++    override fun getAvailabilityStatus() = AVAILABLE
++
++    override fun isChecked() = isProtected
++
++    override fun setChecked(checked: Boolean): Boolean {
++        if (isProtected == checked) return false
++        isProtected = checked
++        coroutineScope.launch(Dispatchers.Default) {
++            appLockManager.setShouldProtectApp(packageName, isProtected)
++        }
++        return true
++    }
++
++    override fun displayPreference(screen: PreferenceScreen) {
++        super.displayPreference(screen)
++        preference = screen.findPreference(preferenceKey)
++    }
++}
+diff --git a/src/com/android/settings/security/applock/AppLockSettingsFragment.kt b/src/com/android/settings/security/applock/AppLockSettingsFragment.kt
+new file mode 100644
+index 00000000000..07ba36edc0e
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockSettingsFragment.kt
+@@ -0,0 +1,86 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock
++
++import android.content.Context
++import android.os.SystemProperties
++import android.view.Menu
++import android.view.MenuInflater
++import android.view.MenuItem
++
++import com.android.internal.logging.nano.MetricsProto
++import androidx.lifecycle.lifecycleScope
++
++import com.android.settings.R
++import com.android.settings.dashboard.DashboardFragment
++import com.android.settings.search.BaseSearchIndexProvider
++import com.android.settingslib.core.AbstractPreferenceController
++import com.android.settingslib.search.SearchIndexable
++
++@SearchIndexable
++class AppLockSettingsFragment : DashboardFragment(),
++    MenuItem.OnMenuItemClickListener {
++
++    private var debugEnabled = SystemProperties.get(DEBUG_PROPERTY, null) == LEVEL_DEBUG
++    private var handledClick = false
++
++    override protected fun getPreferenceScreenResId() = R.xml.app_lock_settings
++
++    override fun getMetricsCategory() = MetricsProto.MetricsEvent.VIEW_UNKNOWN
++
++    override protected fun getLogTag() = TAG
++
++    override fun onCreateOptionsMenu(menu: Menu, menuInflater: MenuInflater) {
++        super.onCreateOptionsMenu(menu, menuInflater)
++        menu.add(
++            0 /* groupId */,
++            MENU_ITEM_DEBUG_ID,
++            0 /* order */,
++            getDebugMenuItemTitle(),
++        ).setOnMenuItemClickListener(this)
++    }
++
++    private fun getDebugMenuItemTitle(): Int =
++        if (debugEnabled) R.string.disable_debugging else R.string.enable_debugging
++
++    override fun onMenuItemClick(item: MenuItem): Boolean {
++        if (item.itemId == MENU_ITEM_DEBUG_ID) {
++            debugEnabled = !debugEnabled
++            SystemProperties.set(DEBUG_PROPERTY, if (debugEnabled) LEVEL_DEBUG else null)
++            item.setTitle(getDebugMenuItemTitle())
++            return true
++        }
++        return false
++    }
++
++    override protected fun createPreferenceControllers(
++        context: Context
++    ) : List<AbstractPreferenceController> = listOf(
++        AppLockBiometricPreferenceController(context, lifecycleScope)
++    )
++
++    companion object {
++        private const val TAG = "AppLockSettingsFragment"
++
++        private const val DEBUG_PROPERTY = "log.tag.AppLockManagerService"
++        private const val LEVEL_DEBUG = "DEBUG"
++        private const val MENU_ITEM_DEBUG_ID = 101
++
++        @JvmField
++        val SEARCH_INDEX_DATA_PROVIDER = BaseSearchIndexProvider(R.xml.app_lock_settings)
++    }
++}
+diff --git a/src/com/android/settings/security/applock/AppLockSettingsPreferenceController.kt b/src/com/android/settings/security/applock/AppLockSettingsPreferenceController.kt
+new file mode 100644
+index 00000000000..69b0433d2c3
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockSettingsPreferenceController.kt
+@@ -0,0 +1,131 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock
++
++import android.app.Activity
++import android.app.AppLockManager
++import android.app.KeyguardManager
++import android.content.Context
++import android.content.Intent
++import android.os.UserHandle
++
++import androidx.activity.result.ActivityResultLauncher
++import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
++import androidx.lifecycle.Lifecycle.Event
++import androidx.lifecycle.LifecycleEventObserver
++import androidx.lifecycle.LifecycleOwner
++import androidx.preference.Preference
++import androidx.preference.PreferenceScreen
++
++import com.android.internal.widget.LockPatternUtils
++import com.android.settings.R
++import com.android.settings.Utils.SETTINGS_PACKAGE_NAME
++import com.android.settings.core.SubSettingLauncher
++import com.android.settings.dashboard.DashboardFragment
++import com.android.settings.password.ConfirmDeviceCredentialActivity
++import com.android.settingslib.core.lifecycle.Lifecycle
++import com.android.settingslib.transition.SettingsTransitionHelper.TransitionType.TRANSITION_SLIDE
++import com.android.settings.core.BasePreferenceController
++
++import com.android.settings.SettingsActivity
++import com.android.settings.core.SettingsBaseActivity
++import com.android.settingslib.core.instrumentation.MetricsFeatureProvider
++
++class AppLockSettingsPreferenceController(
++    context: Context,
++    preferenceKey: String,
++    private val host: DashboardFragment?,
++    lifecycle: Lifecycle?,
++) : BasePreferenceController(context, preferenceKey),
++    LifecycleEventObserver {
++
++    private val lockPatternUtils = LockPatternUtils(context)
++    private val appLockManager = context.getSystemService(AppLockManager::class.java)!!
++    private var preference: Preference? = null
++    private val securityPromptLauncher: ActivityResultLauncher<Intent>?
++
++    init {
++        lifecycle?.addObserver(this)
++        securityPromptLauncher = host?.registerForActivityResult(
++            StartActivityForResult()
++        ) {
++            if (it?.resultCode == Activity.RESULT_OK) {
++                val intent = SubSettingLauncher(mContext)
++                    .setDestination(AppLockSettingsFragment::class.qualifiedName)
++                    .setSourceMetricsCategory(host.metricsCategory)
++                    .setTransitionType(TRANSITION_SLIDE)
++                    .toIntent()
++                intent.setClass(mContext, AppLockSubSettings::class.java)
++                mContext.startActivity(intent)
++            }
++        }
++    }
++
++    override fun getAvailabilityStatus() =
++        if (lockPatternUtils.isSecure(UserHandle.myUserId()))
++            AVAILABLE
++        else
++            DISABLED_DEPENDENT_SETTING
++
++    override fun onStateChanged(owner: LifecycleOwner, event: Event) {
++        if (event == Event.ON_START) {
++            preference?.let {
++                updateState(it)
++            }
++        }
++    }
++
++    override fun displayPreference(screen: PreferenceScreen) {
++        super.displayPreference(screen)
++        preference = screen.findPreference(preferenceKey)
++    }
++
++    override fun updateState(preference: Preference) {
++        preference.apply {
++            if (getAvailabilityStatus() == AVAILABLE) {
++                setEnabled(true)
++                summary = getSummaryForListSize(appLockManager.packageData.filter {
++                    it.shouldProtectApp == true
++                }.size)
++            } else {
++                setEnabled(false)
++                summary = mContext.getString(R.string.disabled_because_no_backup_security)
++            }
++        }
++    }
++
++    private fun getSummaryForListSize(size: Int): CharSequence? =
++        if (size == 0) {
++            mContext.getString(R.string.app_lock_packages_summary)
++        } else {
++            mContext.resources.getQuantityString(R.plurals.app_lock_summary, size, size)
++        }
++
++    override fun handlePreferenceTreeClick(preference: Preference): Boolean {
++        if (preference.key == preferenceKey && securityPromptLauncher != null) {
++            val title = mContext.getString(R.string.app_lock_authentication_dialog_title)
++            val intent = Intent().apply {
++                setClassName(SETTINGS_PACKAGE_NAME,
++                        ConfirmDeviceCredentialActivity::class.qualifiedName!!)
++                putExtra(KeyguardManager.EXTRA_TITLE, title)
++            }
++            securityPromptLauncher.launch(intent)
++            return true
++        }
++        return super.handlePreferenceTreeClick(preference)
++    }
++}
+diff --git a/src/com/android/settings/security/applock/AppLockSubSettings.kt b/src/com/android/settings/security/applock/AppLockSubSettings.kt
+new file mode 100644
+index 00000000000..e376f1696d0
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockSubSettings.kt
+@@ -0,0 +1,26 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock
++
++import com.android.settings.SettingsActivity
++
++class AppLockSubSettings : SettingsActivity() {
++
++    override protected fun isValidFragment(fragmentName: String): Boolean {
++        return AppLockSettingsFragment::class.qualifiedName == fragmentName
++    }
++}
+diff --git a/src/com/android/settings/security/applock/AppLockTimeoutPreferenceController.kt b/src/com/android/settings/security/applock/AppLockTimeoutPreferenceController.kt
+new file mode 100644
+index 00000000000..00f3a0baaad
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockTimeoutPreferenceController.kt
+@@ -0,0 +1,47 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock
++
++import android.app.AppLockManager
++import android.content.Context
++
++import androidx.preference.ListPreference
++import androidx.preference.Preference
++
++import com.android.settings.core.BasePreferenceController
++
++class AppLockTimeoutPreferenceController(
++    context: Context,
++    key: String,
++) : BasePreferenceController(context, key),
++    Preference.OnPreferenceChangeListener {
++
++    private val appLockManager = context.getSystemService(AppLockManager::class.java)!!
++
++    override fun getAvailabilityStatus() = AVAILABLE
++
++    override fun updateState(preference: Preference) {
++        (preference as ListPreference).value = appLockManager.timeout.takeIf {
++            it != -1L
++        }?.toString()
++    }
++
++    override fun onPreferenceChange(preference: Preference, newValue: Any): Boolean {
++        appLockManager.timeout = (newValue as String).toLong()
++        return true
++    }
++}
+diff --git a/src/com/android/settings/security/applock/AppLockTogglePreferenceController.kt b/src/com/android/settings/security/applock/AppLockTogglePreferenceController.kt
+new file mode 100644
+index 00000000000..e5baa5024db
+--- /dev/null
++++ b/src/com/android/settings/security/applock/AppLockTogglePreferenceController.kt
+@@ -0,0 +1,49 @@
++/*
++ * Copyright (C) 2022 FlamingoOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.applock;
++
++import android.content.Context
++import android.widget.CompoundButton
++import android.widget.CompoundButton.OnCheckedChangeListener
++
++import androidx.preference.Preference
++import androidx.preference.PreferenceScreen
++
++import com.android.settings.R
++import com.android.settings.core.TogglePreferenceController
++import com.android.settingslib.widget.MainSwitchPreference
++
++abstract class AppLockTogglePreferenceController(
++    context: Context,
++    key: String,
++) : TogglePreferenceController(context, key),
++    OnCheckedChangeListener {
++
++    override fun displayPreference(screen: PreferenceScreen) {
++        super.displayPreference(screen)
++        val preference = screen.findPreference<Preference>(preferenceKey) ?: return
++        if (preference is MainSwitchPreference) {
++            preference.addOnSwitchChangeListener(this)
++        }
++    }
++
++    override fun onCheckedChanged(buttonView: CompoundButton, isChecked: Boolean) {
++        setChecked(isChecked)
++    }
++
++    override fun getSliceHighlightMenuRes() = R.string.menu_key_security
++}
+-- 
+2.43.0
+

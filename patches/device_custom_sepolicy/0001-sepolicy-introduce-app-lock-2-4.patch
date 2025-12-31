@@ -1,0 +1,42 @@
+From a183f961d047b16a237ed83500f724a02f14c5ea Mon Sep 17 00:00:00 2001
+From: jhonboy121 <alfredmathew05@gmail.com>
+Date: Sun, 29 Jan 2023 16:18:38 +0000
+Subject: [PATCH] sepolicy: introduce app lock [2/4]
+
+Change-Id: I70236f570cbaf10c39e95b3950d3b4b5653c1155
+Signed-off-by: jhonboy121 <alfredmathew05@gmail.com>
+---
+ private/service.te       | 1 +
+ private/service_contexts | 1 +
+ private/system_server.te | 3 +++
+ 3 files changed, 5 insertions(+)
+ create mode 100644 private/service.te
+ create mode 100644 private/service_contexts
+
+diff --git a/private/service.te b/private/service.te
+new file mode 100644
+index 0000000..55b0d37
+--- /dev/null
++++ b/private/service.te
+@@ -0,0 +1 @@
++type app_lock_service, system_api_service, system_server_service, service_manager_type;
+diff --git a/private/service_contexts b/private/service_contexts
+new file mode 100644
+index 0000000..ac3c8e1
+--- /dev/null
++++ b/private/service_contexts
+@@ -0,0 +1 @@
++app_lock                                  u:object_r:app_lock_service:s0
+diff --git a/private/system_server.te b/private/system_server.te
+index 403f847..c4e9a97 100644
+--- a/private/system_server.te
++++ b/private/system_server.te
+@@ -1,2 +1,5 @@
+ # Stage the Play Integrity props that bionic serves to DroidGuard
+ set_prop(system_server, pif_prop)
++
++# App Lock
++add_service(system_server, app_lock_service);
+-- 
+2.43.0
+

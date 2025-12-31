@@ -1,0 +1,43 @@
+From ac5a3e3f1d60259f4d3d84a43eee31e666ef6dd9 Mon Sep 17 00:00:00 2001
+From: jhonboy121 <alfredmathew05@gmail.com>
+Date: Sat, 19 Feb 2022 14:46:25 +0900
+Subject: [PATCH] vendor: Introduce App Lock [4/4]
+
+Change-Id: I86aaf4b40269add64a51647a125a76630dea18cf
+---
+ config/common.mk                                    | 5 +++++
+ config/permissions/privapp-permissions-settings.xml | 6 ++++++
+ 2 files changed, 11 insertions(+)
+ create mode 100644 config/permissions/privapp-permissions-settings.xml
+
+diff --git a/config/common.mk b/config/common.mk
+index aa75095..94c49c9 100644
+--- a/config/common.mk
++++ b/config/common.mk
+@@ -61,6 +61,11 @@ PRODUCT_COPY_FILES += \
+ PRODUCT_COPY_FILES += \
+     vendor/custom/prebuilt/common/etc/sysconfig/pixel_2016_exclusive.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/sysconfig/pixel_2016_exclusive.xml
+ 
++# App Lock Permissions
++PRODUCT_COPY_FILES += \
++    vendor/custom/config/permissions/privapp-permissions-settings.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/permissions/privapp-permissions-settings.xml
++
++
+ # Overlay
+ PRODUCT_PACKAGE_OVERLAYS += \
+     vendor/custom/overlay/common
+diff --git a/config/permissions/privapp-permissions-settings.xml b/config/permissions/privapp-permissions-settings.xml
+new file mode 100644
+index 0000000..9de6fa6
+--- /dev/null
++++ b/config/permissions/privapp-permissions-settings.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<permissions>
++    <privapp-permissions package="com.android.settings">
++        <permission name="android.permission.MANAGE_APP_LOCK" />
++    </privapp-permissions>
++</permissions>
+-- 
+2.43.0
+
