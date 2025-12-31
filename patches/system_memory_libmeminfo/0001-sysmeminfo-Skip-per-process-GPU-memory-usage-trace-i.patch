@@ -1,0 +1,131 @@
+From d6e598089368206116d61d731d5398f5981d7f17 Mon Sep 17 00:00:00 2001
+From: Tashfin Shakeer Rhythm <tashfinshakeerrhythm@gmail.com>
+Date: Fri, 9 Jan 2026 12:18:25 +0600
+Subject: [PATCH] sysmeminfo: Skip per process GPU memory usage trace if
+ disabled in kernel
+
+We do not need this per process GPU memory usage tracing debug cruft that relies
+on BPF check to retrieve RO map of the gpu mem file. Failing to get the gpu mem
+file created by tracepoints in kernel results in the following crash and soft
+reboots the device:
+
+01-08 11:56:02.611  1645  2868 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 2868 (binder:1645_C), pid 1645 (system_server)
+01-08 11:56:03.363 11127 11127 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+01-08 11:56:03.363 11127 11127 F DEBUG   : Build fingerprint: 'POCO/redwood_global/redwood:14/UKQ1.240624.001/OS2.0.16.0.UMSMIXM:user/release-keys'
+01-08 11:56:03.363 11127 11127 F DEBUG   : Kernel Release: '5.4.295-Scarlet-v4.0-beta1-@9bb6b93a'
+01-08 11:56:03.363 11127 11127 F DEBUG   : Revision: '0'
+01-08 11:56:03.363 11127 11127 F DEBUG   : ABI: 'arm64'
+01-08 11:56:03.363 11127 11127 F DEBUG   : Timestamp: 2026-01-08 11:56:02.774622618-0300
+01-08 11:56:03.363 11127 11127 F DEBUG   : Process uptime: 104s
+01-08 11:56:03.363 11127 11127 F DEBUG   : Executable: /system/bin/app_process64
+01-08 11:56:03.363 11127 11127 F DEBUG   : Cmdline: system_server
+01-08 11:56:03.363 11127 11127 F DEBUG   : pid: 1645, tid: 2868, name: binder:1645_C  >>> system_server <<<
+01-08 11:56:03.363 11127 11127 F DEBUG   : uid: 1000
+01-08 11:56:03.363 11127 11127 F DEBUG   : esr: 0000000092000006 (Data Abort Exception 0x24)
+01-08 11:56:03.363 11127 11127 F DEBUG   : signal 6 (SIGABRT), code -1 (SI_QUEUE), fault addr --------
+01-08 11:56:03.363 11127 11127 F DEBUG   :     x0  0000000000000000  x1  0000000000000b34  x2  0000000000000006  x3  0000007a2f50d660
+01-08 11:56:03.363 11127 11127 F DEBUG   :     x4  000000000000000a  x5  000000000000000a  x6  000000000000000a  x7  203a54524f424120
+01-08 11:56:03.363 11127 11127 F DEBUG   :     x8  00000000000000f0  x9  01abe0c456806b20  x10 000000ff00000020  x11 0000000000000b34
+01-08 11:56:03.363 11127 11127 F DEBUG   :     x12 0000007eec288595  x13 00000000341555ac  x14 0000000000000000  x15 0000000095367aa8
+01-08 11:56:03.363 11127 11127 F DEBUG   :     x16 0000007eec35b150  x17 0000007eec3424c0  x18 00000079f3a1c000  x19 000000000000066d
+01-08 11:56:03.363 11127 11127 F DEBUG   :     x20 0000000000000b34  x21 00000000ffffffff  x22 0000000000000016  x23 0000007a2f50f640
+01-08 11:56:03.363 11127 11127 F DEBUG   :     x24 0000000000000000  x25 0000007a2f50e0d8  x26 0000000018200001  x27 0000000000000060
+01-08 11:56:03.363 11127 11127 F DEBUG   :     x28 0000007a2f50de20  x29 0000007a2f50d6e0
+01-08 11:56:03.363 11127 11127 F DEBUG   :     lr  0000007eec2d6e18  sp  0000007a2f50d660  pc  0000007eec2d6e3c  pst 0000000000001000
+01-08 11:56:03.363 11127 11127 F DEBUG   :     esr 0000000092000006
+01-08 11:56:03.363 11127 11127 F DEBUG   : 9 total frames
+01-08 11:56:03.363 11127 11127 F DEBUG   : backtrace:
+01-08 11:56:03.363 11127 11127 F DEBUG   :       #00 pc 0000000000075e3c  /apex/com.android.runtime/lib64/bionic/libc.so (abort+156) (BuildId: 6c6cba522bca11ea5fc71377122a3470)
+01-08 11:56:03.363 11127 11127 F DEBUG   :       #01 pc 0000000000017cec  /system/lib64/libmeminfo.so (android::bpf::Abort(int, char const*, ...)+396) (BuildId: 89f1ef4a7a3970ec9644175d4fbc7ba4)
+01-08 11:56:03.363 11127 11127 F DEBUG   :       #02 pc 0000000000017abc  /system/lib64/libmeminfo.so (android::bpf::BpfMapRO<unsigned long, unsigned long>::abortOnMismatch(bool) const+588) (BuildId: 89f1ef4a7a3970ec9644175d4fbc7ba4)
+01-08 11:56:03.363 11127 11127 F DEBUG   :       #03 pc 00000000000135b4  /system/lib64/libmeminfo.so (android::meminfo::ReadPerProcessGpuMem(std::__1::unordered_map<unsigned int, unsigned long, std::__1::hash<unsigned int>, std::__1::equal_to<unsigned int>, std::__1::allocator<std::__1::pair<unsigned int const, unsigned long>>>*)+164) (BuildId: 89f1ef4a7a3970ec9644175d4fbc7ba4)
+01-08 11:56:03.363 11127 11127 F DEBUG   :       #04 pc 00000000002501c4  /system/lib64/libandroid_runtime.so (android::KernelAllocationStats_getGpuAllocations(_JNIEnv*)+68) (BuildId: 633b5ca9bfdd1bf66c162d9d965bdca8)
+01-08 11:56:03.363 11127 11127 F DEBUG   :       #05 pc 000000000083bfc8  /system/framework/arm64/boot-framework.oat (art_jni_trampoline+104) (BuildId: d4bc286f1d95c7bd26c7f5d9dd7583705f86d85d)
+01-08 11:56:03.363 11127 11127 F DEBUG   :       #06 pc 0000000000690268  /apex/com.android.art/lib64/libart.so (nterp_helper+152) (BuildId: af71add3d64ba5d0923c04ec4779dcbb)
+01-08 11:56:03.363 11127 11127 F DEBUG   :       #07 pc 000000000050c710  /system/framework/services.jar (offset 0x9f6000) (com.android.server.stats.pull.StatsPullAtomService.pullProcessMemorySnapshot+28)
+01-08 11:56:03.363 11127 11127 F DEBUG   :       #08 pc 000000000041694c  /system/framework/oat/arm64/services.odex (BuildId: 1e9b6fbe73ea3145e03b351fd069492f225eeaaf)
+
+01-09 08:07:59.850  1634  2217 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 2217 (binder:1634_3), pid 1634 (system_server)
+01-09 08:08:00.538 13121 13121 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+01-09 08:08:00.538 13121 13121 F DEBUG   : Build fingerprint: 'POCO/redwood_global/redwood:14/UKQ1.240624.001/OS2.0.16.0.UMSMIXM:user/release-keys'
+01-09 08:08:00.538 13121 13121 F DEBUG   : Kernel Release: '5.4.295-Scarlet-v4.0-beta1-@c15337fe'
+01-09 08:08:00.538 13121 13121 F DEBUG   : Revision: '0'
+01-09 08:08:00.538 13121 13121 F DEBUG   : ABI: 'arm64'
+01-09 08:08:00.538 13121 13121 F DEBUG   : Timestamp: 2026-01-09 08:07:59.955377078-0300
+01-09 08:08:00.538 13121 13121 F DEBUG   : Process uptime: 411s
+01-09 08:08:00.538 13121 13121 F DEBUG   : Executable: /system/bin/app_process64
+01-09 08:08:00.538 13121 13121 F DEBUG   : Cmdline: system_server
+01-09 08:08:00.538 13121 13121 F DEBUG   : pid: 1634, tid: 2217, name: binder:1634_3  >>> system_server <<<
+01-09 08:08:00.538 13121 13121 F DEBUG   : uid: 1000
+01-09 08:08:00.538 13121 13121 F DEBUG   : esr: 0000000092000006 (Data Abort Exception 0x24)
+01-09 08:08:00.538 13121 13121 F DEBUG   : signal 6 (SIGABRT), code -1 (SI_QUEUE), fault addr --------
+01-09 08:08:00.538 13121 13121 F DEBUG   :     x0  0000000000000000  x1  00000000000008a9  x2  0000000000000006  x3  0000007b40bac600
+01-09 08:08:00.538 13121 13121 F DEBUG   :     x4  0000007b40bacd28  x5  0000007b40bacd28  x6  0000007b40bacd28  x7  0000007c79ee5481
+01-09 08:08:00.538 13121 13121 F DEBUG   :     x8  00000000000000f0  x9  6fad1b280870fd9f  x10 000000ff00000020  x11 0000007ca5747464
+01-09 08:08:00.538 13121 13121 F DEBUG   :     x12 0000007ca57474d4  x13 0000007ca5747544  x14 0000007ca57475c4  x15 0000000000080100
+01-09 08:08:00.538 13121 13121 F DEBUG   :     x16 0000007f5c96f150  x17 0000007f5c9564c0  x18 0000007b4010c000  x19 0000000000000662
+01-09 08:08:00.538 13121 13121 F DEBUG   :     x20 00000000000008a9  x21 00000000ffffffff  x22 0000007b40bae640  x23 0000000000000000
+01-09 08:08:00.538 13121 13121 F DEBUG   :     x24 0000000000000000  x25 0000007b40baca10  x26 0000007b40bacd28  x27 0000000070268e58
+01-09 08:08:00.538 13121 13121 F DEBUG   :     x28 0000000000000005  x29 0000007b40bac680
+01-09 08:08:00.538 13121 13121 F DEBUG   :     lr  0000007f5c8eae18  sp  0000007b40bac600  pc  0000007f5c8eae3c  pst 0000000000001000
+01-09 08:08:00.538 13121 13121 F DEBUG   :     esr 0000000092000006
+01-09 08:08:00.538 13121 13121 F DEBUG   : 16 total frames
+01-09 08:08:00.538 13121 13121 F DEBUG   : backtrace:
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #00 pc 0000000000075e3c  /apex/com.android.runtime/lib64/bionic/libc.so (abort+156) (BuildId: 6c6cba522bca11ea5fc71377122a3470)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #01 pc 0000000000016ac8  /system/lib64/libmeminfo.so (android::bpf::BpfMapRO<unsigned long, unsigned long>::abortOnMismatch(bool) const+472) (BuildId: 9696f22c7bce88df622590fd6f5a7269)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #02 pc 0000000000013320  /system/lib64/libmeminfo.so (android::meminfo::ReadProcessGpuUsageKb(unsigned int, unsigned int, unsigned long*)+160) (BuildId: 9696f22c7bce88df622590fd6f5a7269)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #03 pc 00000000001c2124  /system/lib64/libandroid_runtime.so (android::android_os_Debug_getGpuTotalUsageKb(_JNIEnv*, _jobject*)+36) (BuildId: 633b5ca9bfdd1bf66c162d9d965bdca8)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #04 pc 000000000083d3d8  /system/framework/arm64/boot-framework.oat (art_jni_trampoline+104) (BuildId: d4bc286f1d95c7bd26c7f5d9dd7583705f86d85d)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #05 pc 0000000000287660  /apex/com.android.art/lib64/libart.so (art_quick_invoke_static_stub+640) (BuildId: af71add3d64ba5d0923c04ec4779dcbb)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #06 pc 00000000005d7e60  /apex/com.android.art/lib64/libart.so (bool art::interpreter::DoCall<false>(art::ArtMethod*, art::Thread*, art::ShadowFrame&, art::Instruction const*, unsigned short, bool, art::JValue*)+2192) (BuildId: af71add3d64ba5d0923c04ec4779dcbb)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #07 pc 00000000005b2ab8  /apex/com.android.art/lib64/libart.so (void art::interpreter::ExecuteSwitchImplCpp<false>(art::interpreter::SwitchImplContext*)+536) (BuildId: af71add3d64ba5d0923c04ec4779dcbb)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #08 pc 00000000003796a8  /apex/com.android.art/lib64/libart.so (ExecuteSwitchImplAsm+8) (BuildId: af71add3d64ba5d0923c04ec4779dcbb)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #09 pc 00000000005108a8  /system/framework/services.jar (offset 0x9f6000) (com.android.server.stats.pull.SystemMemoryUtil.getMetrics+0)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #10 pc 00000000003792fc  /apex/com.android.art/lib64/libart.so (art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, art::ShadowFrame&, art::JValue, bool, bool) (.__uniq.112435418011751916792819755956732575238.llvm.12672323154171825750)+364) (BuildId: af71add3d64ba5d0923c04ec4779dcbb)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #11 pc 0000000000378a1c  /apex/com.android.art/lib64/libart.so (artQuickToInterpreterBridge+1020) (BuildId: af71add3d64ba5d0923c04ec4779dcbb)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #12 pc 000000000029e838  /apex/com.android.art/lib64/libart.so (art_quick_to_interpreter_bridge+88) (BuildId: af71add3d64ba5d0923c04ec4779dcbb)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #13 pc 0000000000690268  /apex/com.android.art/lib64/libart.so (nterp_helper+152) (BuildId: af71add3d64ba5d0923c04ec4779dcbb)
+01-09 08:08:00.538 13121 13121 F DEBUG   :       #14 pc 000000000050cdc0  /system/framework/services.jar (offset 0x9f6000) (com.android.server.stats.pull.StatsPullAtomService.pullSystemMemory+0)
+01-09 08:08:00.539 13121 13121 F DEBUG   :       #15 pc 00000000004167cc  /system/framework/oat/arm64/services.odex (BuildId: 1e9b6fbe73ea3145e03b351fd069492f225eeaaf)
+
+This is not efficient at all. If CONFIG_TRACE_GPU_MEM which depends on
+CONFIG_TRACEPOINTS is not enabled in kernel, then map_gpuMem_gpu_mem_total_map
+will not be generated. Instead of crashing the system, just bail out if the file
+does not exist.
+
+Signed-off-by: Tashfin Shakeer Rhythm <tashfinshakeerrhythm@gmail.com>
+---
+ sysmeminfo.cpp | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/sysmeminfo.cpp b/sysmeminfo.cpp
+index 767335f..730d344 100644
+--- a/sysmeminfo.cpp
++++ b/sysmeminfo.cpp
+@@ -384,6 +384,11 @@ bool ReadPerProcessGpuMem([[maybe_unused]] std::unordered_map<uint32_t, uint64_t
+ #if defined(__ANDROID__) && !defined(__ANDROID_APEX__) && !defined(__ANDROID_VNDK__)
+     static constexpr const char kBpfGpuMemTotalMap[] = "/sys/fs/bpf/map_gpuMem_gpu_mem_total_map";
+ 
++    if (access(kBpfGpuMemTotalMap, F_OK)) {
++        LOG(ERROR) << "ReadPerProcessGpuMem: GpuMem tracing is disabled in kernel. Skipping!";
++        return false;
++    }
++
+     // Use the read-only wrapper BpfMapRO to properly retrieve the read-only map.
+     auto map = bpf::BpfMapRO<uint64_t, uint64_t>(kBpfGpuMemTotalMap);
+     if (!map.isValid()) {
+@@ -433,6 +438,11 @@ bool ReadProcessGpuUsageKb([[maybe_unused]] uint32_t pid, [[maybe_unused]] uint3
+ #if defined(__ANDROID__) && !defined(__ANDROID_APEX__) && !defined(__ANDROID_VNDK__)
+     static constexpr const char kBpfGpuMemTotalMap[] = "/sys/fs/bpf/map_gpuMem_gpu_mem_total_map";
+ 
++    if (access(kBpfGpuMemTotalMap, F_OK)) {
++        LOG(ERROR) << "ReadProcessGpuUsageKb: GpuMem tracing is disabled in kernel. Skipping!";
++        return false;
++    }
++
+     uint64_t gpu_mem;
+ 
+     // BPF Key [32-bits GPU ID | 32-bits PID]
+-- 
+2.34.1
+

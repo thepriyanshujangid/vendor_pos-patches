@@ -1,0 +1,575 @@
+From c77002bcc029d320924de739d4770870e59a4a78 Mon Sep 17 00:00:00 2001
+From: thepriyanshujangid <priyanshuajangid@yahoo.com>
+Date: Fri, 2 Oct 2026 17:19:09 +0000
+Subject: [PATCH 1/4] Settings: Add support for hide applist [2/2]
+
+* Code is adapted from cutout force full screen
+* Give authorship
+* Add "Show system" and "Show overlay" menu based on ManageApplications.java
+* Query all apps installed by any user and set value for all user
+
+Co-authored-by: LuK1337 <priv.luk@gmail.com>
+Co-authored-by: Tony Mantler <nicoya@google.com>
+Co-authored-by: jhenrique09 <jhsv09@gmail.com>
+Co-authored-by: jhonboy121 <alfredmathew05@gmail.com>
+Co-authored-by: cjh1249131356 <cjh1249131356@gmail.com>
+Co-authored-by: Adithya R <gh0strider.2k18.reborn@gmail.com>
+Change-Id: I0c0ea99477e3045ff218b077ec547dba23ca6262
+---
+ res/layout/hide_applist_layout.xml            |  27 ++
+ res/layout/hide_applist_list_item.xml         |  65 ++++
+ res/menu/hide_applist_menu.xml                |  33 ++
+ res/values/custom_arrays.xml                  |  10 +
+ res/values/custom_strings.xml                 |   7 +
+ res/xml/hide_applist_prefs.xml                |  11 +
+ res/xml/more_security_privacy_settings.xml    |   6 +
+ .../privacy/HideAppListStatusSettings.kt      | 321 ++++++++++++++++++
+ 8 files changed, 480 insertions(+)
+ create mode 100644 res/layout/hide_applist_layout.xml
+ create mode 100644 res/layout/hide_applist_list_item.xml
+ create mode 100644 res/menu/hide_applist_menu.xml
+ create mode 100644 res/xml/hide_applist_prefs.xml
+ create mode 100644 src/com/android/settings/custom/privacy/HideAppListStatusSettings.kt
+
+diff --git a/res/layout/hide_applist_layout.xml b/res/layout/hide_applist_layout.xml
+new file mode 100644
+index 00000000000..3d5f719eff5
+--- /dev/null
++++ b/res/layout/hide_applist_layout.xml
+@@ -0,0 +1,27 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     Copyright (C) 2021 AOSP-Krypton Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:id="@+id/hide_applist_prefs"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent">
++
++    <androidx.recyclerview.widget.RecyclerView
++        android:id="@+id/user_list_view"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent" />
++
++</FrameLayout>
+diff --git a/res/layout/hide_applist_list_item.xml b/res/layout/hide_applist_list_item.xml
+new file mode 100644
+index 00000000000..5ff94e19953
+--- /dev/null
++++ b/res/layout/hide_applist_list_item.xml
+@@ -0,0 +1,65 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2022 Paranoid Android
++     SPDX-License-Identifier: Apache-2.0
++  -->
++<LinearLayout
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:background="?android:attr/selectableItemBackground"
++    android:gravity="center_vertical"
++    android:minHeight="?android:attr/listPreferredItemHeightSmall"
++    android:paddingStart="?android:attr/listPreferredItemPaddingStart"
++    android:paddingEnd="?android:attr/listPreferredItemPaddingEnd">
++
++    <LinearLayout
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:gravity="start|center_vertical"
++        android:minWidth="@android:dimen/app_icon_size"
++        android:orientation="horizontal"
++        android:paddingEnd="16dp"
++        android:paddingTop="4dp"
++        android:paddingBottom="4dp">
++        <ImageView
++            android:id="@+id/app_icon"
++            android:layout_width="@android:dimen/app_icon_size"
++            android:layout_height="@android:dimen/app_icon_size"/>
++    </LinearLayout>
++
++    <LinearLayout
++        android:layout_width="0dp"
++        android:layout_height="wrap_content"
++        android:layout_weight="1"
++        android:orientation="vertical"
++        android:paddingTop="16dp"
++        android:paddingBottom="16dp">
++
++        <TextView
++            android:id="@+id/app_name"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:ellipsize="marquee"
++            android:fadingEdge="horizontal"
++            android:maxLines="2"
++            android:textAppearance="?android:attr/textAppearanceListItem"/>
++
++        <TextView
++            android:id="@+id/package_name"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:textDirection="locale"
++            android:textAppearance="?android:attr/textAppearanceSmall"
++            android:textColor="?android:attr/textColorSecondary"/>
++    </LinearLayout>
++
++    <CheckBox
++        android:id="@+id/check_box"
++        android:layout_width="wrap_content"
++        android:layout_height="match_parent"
++        android:gravity="center_vertical|end"
++        android:focusable="false"
++        android:clickable="false" />
++
++</LinearLayout>
+diff --git a/res/menu/hide_applist_menu.xml b/res/menu/hide_applist_menu.xml
+new file mode 100644
+index 00000000000..5681ff614d7
+--- /dev/null
++++ b/res/menu/hide_applist_menu.xml
+@@ -0,0 +1,33 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2021 AOSP-Krypton Project
++     SPDX-License-Identifier: Apache-2.0
++-->
++<menu xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:tools="http://schemas.android.com/tools">
++
++    <item
++        android:id="@+id/search"
++        android:actionViewClass="android.widget.SearchView"
++        android:icon="@*android:drawable/ic_search_api_material"
++        android:showAsAction="ifRoom|collapseActionView"
++        android:title="@string/search"
++        tools:ignore="AppCompatResource" />
++
++    <item
++        android:id="@+id/show_system"
++        android:title="@string/menu_show_system"
++        android:showAsAction="never" />
++    <item
++        android:id="@+id/hide_system"
++        android:title="@string/menu_hide_system"
++        android:showAsAction="never" />
++    <item
++        android:id="@+id/show_overlay"
++        android:title="@string/menu_show_overlay"
++        android:showAsAction="never" />
++    <item
++        android:id="@+id/hide_overlay"
++        android:title="@string/menu_hide_overlay"
++        android:showAsAction="never" />
++</menu>
+diff --git a/res/values/custom_arrays.xml b/res/values/custom_arrays.xml
+index 3a0aba23458..b9bd33c0c24 100644
+--- a/res/values/custom_arrays.xml
++++ b/res/values/custom_arrays.xml
+@@ -50,6 +50,16 @@
+         <item>2</item>
+         <item>3</item>
+         <item>4</item>
++
++    <!-- Apps list to hide from Hide developer status setting -->
++    <string-array name="hide_applist_hidden_apps" translatable="false">
++        <item>android</item>
++        <item>com.android.settings</item>
++        <item>com.android.systemui</item>
++        <item>com.android.shell</item>
++        <item>com.android.chrome</item>
++        <item>com.android.webview</item>
++        <item>com.google.android.webview</item>
+     </string-array>
+ 
+     <!-- Locale Picker -->
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index c94c9aec850..a584fd260a6 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -417,4 +417,11 @@
+     <string name="software_update_up_to_date_header">Your Pixel is up to date</string>
+     <string name="software_update_up_to_specific_date_summary">Updated to %1$s</string>
+     <string name="system_update_entry_title">System update</string>
++
++    <!-- Hide applist -->
++    <string name="hide_applist_title">Hide applist</string>
++    <string name="hide_applist_summary">Prevent apps from checking selected apps from appslist</string>
++    <string name="menu_show_overlay">Show overlay</string>
++    <string name="menu_hide_overlay">Hide overlay</string>
++
+ </resources>
+diff --git a/res/xml/hide_applist_prefs.xml b/res/xml/hide_applist_prefs.xml
+new file mode 100644
+index 00000000000..7193f192d0c
+--- /dev/null
++++ b/res/xml/hide_applist_prefs.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2018-2023 The LineageOS Project
++     SPDX-License-Identifier: Apache-2.0
++-->
++<PreferenceScreen
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    android:key="hide_applist_settings"
++    android:title="@string/hide_applist_title">
++
++</PreferenceScreen>
+diff --git a/res/xml/more_security_privacy_settings.xml b/res/xml/more_security_privacy_settings.xml
+index 6dc0d0abba3..e66a45fe9ac 100644
+--- a/res/xml/more_security_privacy_settings.xml
++++ b/res/xml/more_security_privacy_settings.xml
+@@ -256,4 +256,10 @@
+                 android:targetPackage="com.google.attestation.verifier" />
+     </Preference>
+ 
++    <Preference
++            android:key="hide_applist_setting"
++            android:title="@string/hide_applist_title"
++            android:summary="@string/hide_applist_summary"
++            android:fragment="com.android.settings.custom.privacy.HideAppListSettings" />
++
+ </PreferenceScreen>
+diff --git a/src/com/android/settings/custom/privacy/HideAppListStatusSettings.kt b/src/com/android/settings/custom/privacy/HideAppListStatusSettings.kt
+new file mode 100644
+index 00000000000..cf58020399b
+--- /dev/null
++++ b/src/com/android/settings/custom/privacy/HideAppListStatusSettings.kt
+@@ -0,0 +1,321 @@
++/*
++ * SPDX-FileCopyrightText: 2018-2024 The LineageOS Project
++ * SPDX-FileCopyrightText: 2021 AOSP-Krypton Project
++ * SPDX-FileCopyrightText: 2022 Nameless-AOSP Project
++ * SPDX-FileCopyrightText: 2022 Paranoid Android
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.settings.custom.privacy
++
++import android.annotation.SuppressLint
++import android.app.ActivityManager
++import android.content.pm.PackageInfo
++import android.content.pm.PackageManager
++import android.content.pm.UserInfo
++import android.graphics.drawable.Drawable
++import android.os.Bundle
++import android.os.UserManager
++import android.provider.Settings
++import android.view.Menu
++import android.view.MenuInflater
++import android.view.MenuItem
++import android.view.View
++import android.view.ViewGroup
++import android.widget.CheckBox
++import android.widget.ImageView
++import android.widget.SearchView
++import android.widget.TextView
++import androidx.core.view.ViewCompat
++import androidx.fragment.app.Fragment
++import androidx.recyclerview.widget.DiffUtil
++import androidx.recyclerview.widget.LinearLayoutManager
++import androidx.recyclerview.widget.ListAdapter
++import androidx.recyclerview.widget.RecyclerView
++import com.android.internal.util.custom.HideAppListUtils
++import com.google.android.material.appbar.AppBarLayout
++import com.android.settings.R
++
++class HideAppListSettings : Fragment(R.layout.hide_applist_layout) {
++
++    private lateinit var activityManager: ActivityManager
++    private lateinit var packageManager: PackageManager
++    private lateinit var recyclerView: RecyclerView
++    private lateinit var adapter: AppListAdapter
++    private lateinit var packageList: List<PackageInfo>
++    private lateinit var userManager: UserManager
++    private lateinit var userInfos: List<UserInfo>
++
++    private var appBarLayout: AppBarLayout? = null
++    private var searchText = ""
++    private var customFilter: ((PackageInfo) -> Boolean)? = null
++    private var comparator: ((PackageInfo, PackageInfo) -> Int)? = null
++    private var hideAppListUtils: HideAppListUtils = HideAppListUtils()
++    private var showSystem = false
++    private var showOverlay = false
++    private var optionsMenu: Menu? = null
++
++    override fun onStart() {
++        super.onStart()
++        updateOptionsMenu()
++        val host = getActivity()
++        if (host != null) {
++            host.invalidateOptionsMenu()
++        }
++    }
++
++    @SuppressLint("QueryPermissionsNeeded")
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        setHasOptionsMenu(true)
++        requireActivity().setTitle(getTitle())
++        appBarLayout = requireActivity().findViewById(R.id.app_bar)
++        activityManager =
++            requireContext().getSystemService(ActivityManager::class.java) as ActivityManager
++        packageManager = requireContext().packageManager
++        packageList = packageManager.getInstalledPackages(PackageManager.MATCH_ANY_USER)
++        userManager = UserManager.get(requireContext())
++        userInfos = userManager.getUsers()
++        for (info in userInfos) {
++            hideAppListUtils.setApps(requireContext(), info.id)
++        }
++    }
++
++    private fun getTitle(): Int {
++        return R.string.hide_applist_title
++    }
++
++    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
++        adapter = AppListAdapter()
++        recyclerView =
++            view.findViewById<RecyclerView>(R.id.user_list_view).also {
++                it!!.layoutManager = LinearLayoutManager(context)
++                it!!.adapter = adapter
++            } as RecyclerView
++        refreshList()
++    }
++
++    /** @return an initial list of packages that should appear as selected. */
++    private fun getInitialCheckedList(): List<String> {
++        val flattenedString = Settings.Secure.getString(requireContext().contentResolver, getKey())
++        return flattenedString?.takeIf { it.isNotBlank() }?.split(",")?.toList() ?: emptyList()
++    }
++
++    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
++        val activity = getActivity()
++        if (activity == null) {
++            return
++        }
++        optionsMenu = menu
++        inflater.inflate(R.menu.hide_applist_menu, menu)
++
++        menu.findItem(R.id.show_system).setVisible(showSystem)
++        menu.findItem(R.id.hide_system).setVisible(!showSystem)
++        menu.findItem(R.id.show_overlay).setVisible(showSystem && showOverlay)
++        menu.findItem(R.id.hide_overlay).setVisible(showSystem && !showOverlay)
++
++        val searchMenuItem = menu.findItem(R.id.search) as MenuItem
++        searchMenuItem.setOnActionExpandListener(
++            object : MenuItem.OnActionExpandListener {
++                override fun onMenuItemActionExpand(item: MenuItem): Boolean {
++                    // To prevent a large space on tool bar.
++                    appBarLayout!!.setExpanded(false /*expanded*/, false /*animate*/)
++                    // To prevent user can expand the collapsing tool bar view.
++                    ViewCompat.setNestedScrollingEnabled(recyclerView, false)
++                    return true
++                }
++
++                override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
++                    // We keep the collapsed status after user cancel the search function.
++                    appBarLayout!!.setExpanded(false /*expanded*/, false /*animate*/)
++                    ViewCompat.setNestedScrollingEnabled(recyclerView, true)
++                    return true
++                }
++            }
++        )
++        val searchView = searchMenuItem.actionView as SearchView
++        searchView.queryHint = getString(R.string.search_apps)
++        searchView.setOnQueryTextListener(
++            object : SearchView.OnQueryTextListener {
++                override fun onQueryTextSubmit(query: String) = false
++
++                override fun onQueryTextChange(newText: String): Boolean {
++                    searchText = newText
++                    refreshList()
++                    return true
++                }
++            }
++        )
++
++        updateOptionsMenu()
++    }
++
++    override fun onOptionsItemSelected(item: MenuItem): Boolean {
++        when (item.getItemId()) {
++            R.id.show_system,
++            R.id.hide_system -> {
++                showSystem = !showSystem
++                if (!showSystem) {
++                    showOverlay = false
++                }
++                refreshList()
++            }
++            R.id.show_overlay,
++            R.id.hide_overlay -> {
++                showOverlay = !showOverlay
++                refreshList()
++            }
++        }
++        updateOptionsMenu()
++        return true
++    }
++
++    override fun onPrepareOptionsMenu(menu: Menu) {
++        updateOptionsMenu()
++    }
++
++    override fun onDestroyOptionsMenu() {
++        optionsMenu = null
++    }
++
++    private fun updateOptionsMenu() {
++        if (optionsMenu == null) {
++            return
++        }
++
++        var menu = optionsMenu as Menu
++
++        menu.findItem(R.id.show_system).setVisible(!showSystem)
++        menu.findItem(R.id.hide_system).setVisible(showSystem)
++        menu.findItem(R.id.show_overlay).setVisible(showSystem && !showOverlay)
++        menu.findItem(R.id.hide_overlay).setVisible(showSystem && showOverlay)
++    }
++
++    /**
++     * Called when user selects an item.
++     *
++     * @param list a [List<String>] of selected items.
++     */
++    private fun onListUpdate(packageName: String, isChecked: Boolean) {
++        if (packageName.isBlank()) return
++        for (info in userInfos) {
++            if (isChecked) {
++                hideAppListUtils.addApp(requireContext(), packageName, info.id)
++            } else {
++                hideAppListUtils.removeApp(requireContext(), packageName, info.id)
++            }
++        }
++        try {
++            activityManager.forceStopPackage(packageName)
++        } catch (ignored: Exception) {}
++    }
++
++    private fun getKey(): String {
++        return Settings.Secure.HIDE_APPLIST
++    }
++
++    private fun refreshList() {
++        var list =
++            packageList
++                .filter {
++                    if (!showSystem) {
++                        !it.applicationInfo!!.isSystemApp() &&
++                            !resources
++                                .getStringArray(R.array.hide_applist_hidden_apps)
++                                .asList()
++                                .contains(it.applicationInfo!!.packageName) &&
++                            !it.applicationInfo!!.packageName.contains("android.settings")
++                    } else {
++                        if (!showOverlay) {
++                            !resources
++                                .getStringArray(R.array.hide_applist_hidden_apps)
++                                .asList()
++                                .contains(it.applicationInfo!!.packageName) &&
++                                !it.applicationInfo!!.packageName.contains("android.settings") &&
++                                !it.applicationInfo!!.isResourceOverlay()
++                        } else {
++                            !resources
++                                .getStringArray(R.array.hide_applist_hidden_apps)
++                                .asList()
++                                .contains(it.applicationInfo!!.packageName) &&
++                                !it.applicationInfo!!.packageName.contains("android.settings")
++                        }
++                    }
++                }
++                .filter { getLabel(it).contains(searchText, true) }
++        list = customFilter?.let { customFilter -> list.filter { customFilter(it) } } ?: list
++        list =
++            comparator?.let { list.sortedWith(it) }
++                ?: list.sortedWith { a, b -> getLabel(a).compareTo(getLabel(b)) }
++        if (::adapter.isInitialized) adapter.submitList(list.map { appInfoFromPackageInfo(it) })
++    }
++
++    private fun appInfoFromPackageInfo(packageInfo: PackageInfo) =
++        AppInfo(
++            packageInfo.packageName,
++            getLabel(packageInfo),
++            packageInfo.applicationInfo!!.loadIcon(packageManager),
++        )
++
++    private fun getLabel(packageInfo: PackageInfo) =
++        packageInfo.applicationInfo!!.loadLabel(packageManager).toString()
++
++    private inner class AppListAdapter : ListAdapter<AppInfo, AppListViewHolder>(itemCallback) {
++        private val selectedIndices = mutableSetOf<Int>()
++        private var initialList = getInitialCheckedList().toMutableList()
++
++        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
++            AppListViewHolder(
++                layoutInflater.inflate(R.layout.hide_applist_list_item, parent, false)
++            )
++
++        override fun onBindViewHolder(holder: AppListViewHolder, position: Int) {
++            getItem(position).let {
++                holder.label!!.text = it.label
++                holder.packageName!!.text = it.packageName
++                holder.icon!!.setImageDrawable(it.icon)
++                holder.itemView!!.setOnClickListener {
++                    if (selectedIndices.contains(position)) {
++                        selectedIndices.remove(position)
++                        onListUpdate(holder.packageName!!.text.toString(), false)
++                    } else {
++                        selectedIndices.add(position)
++                        onListUpdate(holder.packageName!!.text.toString(), true)
++                    }
++                    notifyItemChanged(position)
++                }
++                if (initialList.contains(it.packageName)) {
++                    initialList.remove(it.packageName)
++                    selectedIndices.add(position)
++                }
++                holder.checkBox!!.isChecked = selectedIndices.contains(position)
++            }
++        }
++
++        override fun submitList(list: List<AppInfo>?) {
++            initialList = getInitialCheckedList().toMutableList()
++            selectedIndices.clear()
++            super.submitList(list)
++        }
++    }
++
++    private class AppListViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
++        val icon: ImageView? = itemView.findViewById(R.id.app_icon)
++        val label: TextView? = itemView.findViewById(R.id.app_name)
++        val packageName: TextView? = itemView.findViewById(R.id.package_name)
++        val checkBox: CheckBox? = itemView.findViewById(R.id.check_box)
++    }
++
++    private data class AppInfo(val packageName: String, val label: String, val icon: Drawable)
++
++    companion object {
++        private val itemCallback =
++            object : DiffUtil.ItemCallback<AppInfo>() {
++                override fun areItemsTheSame(oldInfo: AppInfo, newInfo: AppInfo) =
++                    oldInfo.packageName == newInfo.packageName
++
++                override fun areContentsTheSame(oldInfo: AppInfo, newInfo: AppInfo) =
++                    oldInfo == newInfo
++            }
++    }
++}
+-- 
+2.43.0
+

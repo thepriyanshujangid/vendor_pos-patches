@@ -1,0 +1,46 @@
+From c8009539bb30b92610a90ad4d044406119e55a7d Mon Sep 17 00:00:00 2001
+From: thepriyanshujangid <priyanshuajangid@yahoo.com>
+Date: Fri, 2 Oct 2026 17:19:22 +0000
+Subject: [PATCH 2/4] Settings: Allow to hide screen capture status from apps
+ [2/2]
+
+* Allow to hide screen capture detection from privacy invasive apps
+
+Change-Id: I82989e03b5e181a8a3fcf797a27a70bfa5fd06d1
+Signed-off-by: someone5678 <someone5678@users.noreply.github.com>
+---
+ res/values/custom_strings.xml              | 4 ++++
+ res/xml/more_security_privacy_settings.xml | 6 ++++++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index a584fd260a6..2f699e3c374 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -424,4 +424,8 @@
+     <string name="menu_show_overlay">Show overlay</string>
+     <string name="menu_hide_overlay">Hide overlay</string>
+ 
++    <!-- Hide screen capture status -->
++    <string name="hide_screen_capture_status_title">Hide screen capture status</string>
++    <string name="hide_screen_capture_status_summary">Hide screen capture and screen record status from all applications. Can be convenient in some cases but may lead to privacy leaks. Need to restart applications for the change to take effect.</string>
++
+ </resources>
+diff --git a/res/xml/more_security_privacy_settings.xml b/res/xml/more_security_privacy_settings.xml
+index e66a45fe9ac..5cdae4b81f2 100644
+--- a/res/xml/more_security_privacy_settings.xml
++++ b/res/xml/more_security_privacy_settings.xml
+@@ -262,4 +262,10 @@
+             android:summary="@string/hide_applist_summary"
+             android:fragment="com.android.settings.custom.privacy.HideAppListSettings" />
+ 
++    <com.android.settings.custom.preference.GlobalSettingSwitchPreference
++            android:key="hide_screen_capture_status"
++            android:title="@string/hide_screen_capture_status_title"
++            android:summary="@string/hide_screen_capture_status_summary"
++            android:defaultValue="false"/>
++
+ </PreferenceScreen>
+-- 
+2.43.0
+

@@ -1,0 +1,36 @@
+From 8d0b11301a64a94f3da666ed570d8aeab83b6428 Mon Sep 17 00:00:00 2001
+From: thepriyanshujangid <priyanshuajangid@yahoo.com>
+Date: Fri, 2 Oct 2026 17:19:55 +0000
+Subject: [PATCH 4/4] Settings: Enable `window_ignore_secure` and
+ `hide_screen_capture_status` by default
+
+Change-Id: I245a397ff84a6fbd3d111353e53833f9861595e6
+---
+ res/xml/more_security_privacy_settings.xml | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/res/xml/more_security_privacy_settings.xml b/res/xml/more_security_privacy_settings.xml
+index 66b969fcf98..04b88f5668e 100644
+--- a/res/xml/more_security_privacy_settings.xml
++++ b/res/xml/more_security_privacy_settings.xml
+@@ -242,7 +242,7 @@
+         android:key="window_ignore_secure"
+         android:title="@string/ignore_window_secure_title"
+         android:summary="@string/ignore_window_secure_summary"
+-        android:defaultValue="false"/>
++        android:defaultValue="true"/>
+ 
+     <Preference
+         android:order="310"
+@@ -266,7 +266,7 @@
+             android:key="hide_screen_capture_status"
+             android:title="@string/hide_screen_capture_status_title"
+             android:summary="@string/hide_screen_capture_status_summary"
+-            android:defaultValue="false"/>
++            android:defaultValue="true"/>
+ 
+         <Preference
+             android:key="hide_developer_status_settings"
+-- 
+2.43.0
+
