@@ -1,7 +1,7 @@
-From ba9b1577b1a376e0fa0fc886a86aeb0e08c83353 Mon Sep 17 00:00:00 2001
+From f973ae3e58c7231d0777863bb0e6b15dd914921d Mon Sep 17 00:00:00 2001
 From: Oliver Scott <olivercscott@gmail.com>
 Date: Mon, 10 Apr 2023 12:35:40 -0400
-Subject: [PATCH 1/4] base: Add support for hide applist [1/2]
+Subject: [PATCH 1/3] base: Add support for hide applist [1/2]
 
 Author: Wang Han <wanghan1995315@gmail.com>
 Date:   Tue Aug 29 15:21:14 2023 +0000
@@ -21,10 +21,10 @@ Signed-off-by: Saikrishna1504 <saikrishna26918@gmail.com>
  create mode 100644 services/core/java/com/android/server/HideAppListService.java
 
 diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
-index c0e8d817b709..6ad9b3744068 100644
+index 8abd07a20ad2..aef02ad65356 100644
 --- a/core/java/android/provider/Settings.java
 +++ b/core/java/android/provider/Settings.java
-@@ -13647,6 +13647,13 @@ public final class Settings {
+@@ -14003,6 +14003,13 @@ public final class Settings {
           */
          public static final String NETWORK_TRAFFIC_UNITS = "network_traffic_units";
  
@@ -160,10 +160,10 @@ index 000000000000..dc9c2d22d76d
 +    }
 +}
 diff --git a/packages/SettingsProvider/src/android/provider/settings/validators/SecureSettingsValidators.java b/packages/SettingsProvider/src/android/provider/settings/validators/SecureSettingsValidators.java
-index 66464ad082ec..962ca0fa25d8 100644
+index 0bd297a34b8c..1d7e4248df8e 100644
 --- a/packages/SettingsProvider/src/android/provider/settings/validators/SecureSettingsValidators.java
 +++ b/packages/SettingsProvider/src/android/provider/settings/validators/SecureSettingsValidators.java
-@@ -531,5 +531,6 @@ public class SecureSettingsValidators {
+@@ -563,5 +563,6 @@ public class SecureSettingsValidators {
          VALIDATORS.put(Secure.NETWORK_TRAFFIC_MODE, new InclusiveIntegerRangeValidator(0, 3));
          VALIDATORS.put(Secure.NETWORK_TRAFFIC_AUTOHIDE, BOOLEAN_VALIDATOR);
          VALIDATORS.put(Secure.NETWORK_TRAFFIC_UNITS, new InclusiveIntegerRangeValidator(0, 4));
@@ -261,10 +261,10 @@ index 000000000000..5253424858bc
 +    }
 +}
 diff --git a/services/core/java/com/android/server/pm/ComputerEngine.java b/services/core/java/com/android/server/pm/ComputerEngine.java
-index 4df946ae20e4..4bf822a323b6 100644
+index 4ce3cabdd972..d6f68dfc1e60 100644
 --- a/services/core/java/com/android/server/pm/ComputerEngine.java
 +++ b/services/core/java/com/android/server/pm/ComputerEngine.java
-@@ -178,6 +178,8 @@ import java.util.Objects;
+@@ -180,6 +180,8 @@ import java.util.Objects;
  import java.util.Set;
  import java.util.UUID;
  
@@ -273,7 +273,7 @@ index 4df946ae20e4..4bf822a323b6 100644
  /**
   * This class contains the implementation of the Computer functions.  It
   * is entirely self-contained - it has no implicit access to
-@@ -978,6 +980,10 @@ public class ComputerEngine implements Computer {
+@@ -984,6 +986,10 @@ public class ComputerEngine implements Computer {
  
      public final ApplicationInfo getApplicationInfo(String packageName,
              @PackageManager.ApplicationInfoFlagsBits long flags, int userId) {
@@ -284,7 +284,7 @@ index 4df946ae20e4..4bf822a323b6 100644
          return getApplicationInfoInternal(packageName, flags, Binder.getCallingUid(), userId);
      }
  
-@@ -991,6 +997,10 @@ public class ComputerEngine implements Computer {
+@@ -997,6 +1003,10 @@ public class ComputerEngine implements Computer {
              @PackageManager.ApplicationInfoFlagsBits long flags,
              int filterCallingUid, int userId) {
          if (!mUserManager.exists(userId)) return null;
@@ -295,7 +295,7 @@ index 4df946ae20e4..4bf822a323b6 100644
          flags = updateFlagsForApplication(flags, userId);
  
          if (!isRecentsAccessingChildProfiles(Binder.getCallingUid(), userId)) {
-@@ -1001,6 +1011,64 @@ public class ComputerEngine implements Computer {
+@@ -1007,6 +1017,64 @@ public class ComputerEngine implements Computer {
  
          return getApplicationInfoInternalBody(packageName, flags, filterCallingUid, userId);
      }
@@ -360,7 +360,7 @@ index 4df946ae20e4..4bf822a323b6 100644
  
      protected ApplicationInfo getApplicationInfoInternalBody(String packageName,
              @PackageManager.ApplicationInfoFlagsBits long flags,
-@@ -1581,6 +1649,10 @@ public class ComputerEngine implements Computer {
+@@ -1587,6 +1655,10 @@ public class ComputerEngine implements Computer {
  
      public final PackageInfo getPackageInfo(String packageName,
              @PackageManager.PackageInfoFlagsBits long flags, int userId) {
@@ -371,17 +371,17 @@ index 4df946ae20e4..4bf822a323b6 100644
          return getPackageInfoInternal(packageName, PackageManager.VERSION_CODE_HIGHEST,
                  flags, Binder.getCallingUid(), userId);
      }
-@@ -1704,7 +1776,8 @@ public class ComputerEngine implements Computer {
-         enforceCrossUserPermission(callingUid, userId, false /* requireFullPermission */,
-                 false /* checkShell */, "get installed packages");
+@@ -1713,7 +1785,8 @@ public class ComputerEngine implements Computer {
+         Slog.i(TAG, "getInstalledPackages: callingUid=" + callingUid + " flags=" + flags
+                + " updatedFlags=" + updatedFlags + " userId=" + userId);
  
--        return getInstalledPackagesBody(flags, userId, callingUid);
+-        return getInstalledPackagesBody(updatedFlags, userId, callingUid);
 +        return recreatePackageList(callingUid, mContext,
 +                        userId, getInstalledPackagesBody(flags, userId, callingUid));
      }
  
-     protected ParceledListSlice<PackageInfo> getInstalledPackagesBody(long flags, int userId,
-@@ -2506,6 +2579,66 @@ public class ComputerEngine implements Computer {
+     private PackageInfoList getInstalledPackagesBody(long flags, int userId, int callingUid) {
+@@ -2538,6 +2611,66 @@ public class ComputerEngine implements Computer {
          }
      }
  
@@ -448,7 +448,7 @@ index 4df946ae20e4..4bf822a323b6 100644
      /**
       * Returns whether or not access to the application should be filtered.
       * <p>
-@@ -2533,6 +2666,9 @@ public class ComputerEngine implements Computer {
+@@ -2565,6 +2698,9 @@ public class ComputerEngine implements Computer {
          final boolean callerIsInstantApp = instantAppPkgName != null;
          final boolean packageArchivedForUser = ps != null && PackageArchiver.isArchived(
                  ps.getUserStateOrDefault(userId));
@@ -458,7 +458,7 @@ index 4df946ae20e4..4bf822a323b6 100644
          // Don't treat hiddenUntilInstalled as an uninstalled state, phone app needs to access
          // these hidden application details to customize carrier apps. Also, allowing the system
          // caller accessing to application across users.
-@@ -4691,7 +4827,7 @@ public class ComputerEngine implements Computer {
+@@ -4763,7 +4899,7 @@ public class ComputerEngine implements Computer {
              }
          }
  
@@ -468,10 +468,10 @@ index 4df946ae20e4..4bf822a323b6 100644
  
      @Nullable
 diff --git a/services/java/com/android/server/SystemServer.java b/services/java/com/android/server/SystemServer.java
-index c1bfbb330b96..bdfba04452d0 100644
+index 99aa6afc402d..271dc0a90e84 100644
 --- a/services/java/com/android/server/SystemServer.java
 +++ b/services/java/com/android/server/SystemServer.java
-@@ -2898,6 +2898,8 @@ public final class SystemServer implements Dumpable {
+@@ -2921,6 +2921,8 @@ public final class SystemServer implements Dumpable {
              t.traceBegin("AttestationService");
              mSystemServiceManager.startService(AttestationService.class);
              t.traceEnd();

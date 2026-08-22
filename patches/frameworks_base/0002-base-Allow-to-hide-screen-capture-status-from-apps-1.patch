@@ -1,7 +1,7 @@
-From b3dca0f7b6c98ed624093bc1ec9c3af7a364a651 Mon Sep 17 00:00:00 2001
+From 9a4b7caf04e47bb0a0c4519c3e0fb0d8bdc135ad Mon Sep 17 00:00:00 2001
 From: someone5678 <someone5678@users.noreply.github.com>
 Date: Tue, 21 May 2024 09:55:51 -0400
-Subject: [PATCH 2/4] base: Allow to hide screen capture status from apps [1/2]
+Subject: [PATCH 2/3] base: Allow to hide screen capture status from apps [1/2]
 
 * Allow to hide screen capture detection from privacy invasive apps
 * This feature will be extended to screenrecord
@@ -15,10 +15,10 @@ Signed-off-by: someone5678 <someone5678@users.noreply.github.com>
  2 files changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
-index 6ad9b3744068..addedf1837d1 100644
+index aef02ad65356..b5a4d706ea75 100644
 --- a/core/java/android/provider/Settings.java
 +++ b/core/java/android/provider/Settings.java
-@@ -20650,6 +20650,12 @@ public final class Settings {
+@@ -21094,6 +21094,12 @@ public final class Settings {
          @Readable
          public static final String WINDOW_IGNORE_SECURE = "window_ignore_secure";
  
@@ -32,10 +32,10 @@ index 6ad9b3744068..addedf1837d1 100644
           * Setting indicating whether Low Power Standby is enabled, if supported.
           *
 diff --git a/services/core/java/com/android/server/wm/WindowManagerService.java b/services/core/java/com/android/server/wm/WindowManagerService.java
-index c4fd7cad4f8a..6902be7661c5 100644
+index 700c1d1cca1f..f0ad9d34e7fb 100644
 --- a/services/core/java/com/android/server/wm/WindowManagerService.java
 +++ b/services/core/java/com/android/server/wm/WindowManagerService.java
-@@ -10738,7 +10738,6 @@ public class WindowManagerService extends IWindowManager.Stub
+@@ -11161,7 +11161,6 @@ public class WindowManagerService extends IWindowManager.Stub
          mSurfaceSyncGroupController.markSyncGroupReady(syncGroupToken);
      }
  
@@ -43,7 +43,7 @@ index c4fd7cad4f8a..6902be7661c5 100644
      /**
       * Must be called when a screenshot is taken via hardware chord.
       *
-@@ -10752,7 +10751,9 @@ public class WindowManagerService extends IWindowManager.Stub
+@@ -11175,7 +11174,9 @@ public class WindowManagerService extends IWindowManager.Stub
                  "notifyScreenshotListeners()")) {
              throw new SecurityException("Requires STATUS_BAR_SERVICE permission");
          }
@@ -53,7 +53,7 @@ index c4fd7cad4f8a..6902be7661c5 100644
              final DisplayContent displayContent = mRoot.getDisplayContent(displayId);
              if (displayContent == null) {
                  return new ArrayList<>();
-@@ -10854,6 +10855,10 @@ public class WindowManagerService extends IWindowManager.Stub
+@@ -11458,6 +11459,10 @@ public class WindowManagerService extends IWindowManager.Stub
      @EnforcePermission(android.Manifest.permission.DETECT_SCREEN_RECORDING)
      @Override
      public boolean registerScreenRecordingCallback(IScreenRecordingCallback callback) {
@@ -64,7 +64,7 @@ index c4fd7cad4f8a..6902be7661c5 100644
          registerScreenRecordingCallback_enforcePermission();
          return mScreenRecordingCallbackController.register(callback);
      }
-@@ -10866,6 +10871,10 @@ public class WindowManagerService extends IWindowManager.Stub
+@@ -11470,6 +11475,10 @@ public class WindowManagerService extends IWindowManager.Stub
      }
  
      void onProcessActivityVisibilityChanged(int uid, boolean visible) {
@@ -75,7 +75,7 @@ index c4fd7cad4f8a..6902be7661c5 100644
          mScreenRecordingCallbackController.onProcessActivityVisibilityChanged(uid, visible);
      }
  
-@@ -10994,4 +11003,8 @@ public class WindowManagerService extends IWindowManager.Stub
+@@ -11598,4 +11607,8 @@ public class WindowManagerService extends IWindowManager.Stub
              }
          }
      }

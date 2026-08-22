@@ -1,7 +1,7 @@
-From 223cdaa3557eafbe01fb5ea723e6ab0dc12cc132 Mon Sep 17 00:00:00 2001
+From 61baca9cc24f729c4f10262ea2cc967cdea739b6 Mon Sep 17 00:00:00 2001
 From: someone5678 <nemui3353@gmail.com>
 Date: Wed, 31 May 2023 22:33:20 +0900
-Subject: [PATCH 3/4] base: Hide ADB and developer setting enable status [1/2]
+Subject: [PATCH 3/3] base: Hide ADB and developer setting enable status [1/2]
 
 * Some apps check whether ADB or developer setting is enabled
 * Return 0 to selected apps when those apps getInt
@@ -71,10 +71,10 @@ Signed-off-by: therealmharc <therealmharc@gmail.com>
  create mode 100644 core/java/com/android/internal/util/custom/HideDeveloperStatusUtils.java
 
 diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
-index addedf1837d1..80a9b1f55de5 100644
+index b5a4d706ea75..29eaf6388ac8 100644
 --- a/core/java/android/provider/Settings.java
 +++ b/core/java/android/provider/Settings.java
-@@ -108,6 +108,8 @@ import android.widget.Editor;
+@@ -111,6 +111,8 @@ import android.widget.Editor;
  import com.android.internal.annotations.GuardedBy;
  import com.android.internal.util.Preconditions;
  
@@ -83,7 +83,7 @@ index addedf1837d1..80a9b1f55de5 100644
  import java.io.IOException;
  import java.lang.annotation.ElementType;
  import java.lang.annotation.Retention;
-@@ -3714,6 +3716,9 @@ public final class Settings {
+@@ -3836,6 +3838,9 @@ public final class Settings {
          @UnsupportedAppUsage
          public String getStringForUser(ContentResolver cr, String name,
                  final @CanBeCURRENT @UserIdInt int userId) {
@@ -92,8 +92,8 @@ index addedf1837d1..80a9b1f55de5 100644
 +            }
              final boolean isSelf = (userId == UserHandle.myUserId());
              final AttributionSource attributionSource = cr.getAttributionSource();
-             final int deviceId =
-@@ -4435,6 +4440,9 @@ public final class Settings {
+             final int deviceId = android.permission.flags.Flags.deviceAwarePermissionApisEnabled()
+@@ -4578,6 +4583,9 @@ public final class Settings {
           * @return the corresponding value, or null if not present
           */
          public static String getString(ContentResolver resolver, String name) {
@@ -103,7 +103,7 @@ index addedf1837d1..80a9b1f55de5 100644
              return getStringForUser(resolver, name, resolver.getUserId());
          }
  
-@@ -4442,6 +4450,9 @@ public final class Settings {
+@@ -4585,6 +4593,9 @@ public final class Settings {
          @UnsupportedAppUsage
          public static String getStringForUser(ContentResolver resolver, String name,
                  @CanBeCURRENT @UserIdInt int userId) {
@@ -113,7 +113,7 @@ index addedf1837d1..80a9b1f55de5 100644
              if (MOVED_TO_SECURE.contains(name)) {
                  Log.w(TAG, "Setting " + name + " has moved from android.provider.Settings.System"
                          + " to android.provider.Settings.Secure, returning read-only value.");
-@@ -4639,6 +4650,9 @@ public final class Settings {
+@@ -4782,6 +4793,9 @@ public final class Settings {
           * or not a valid integer.
           */
          public static int getInt(ContentResolver cr, String name, int def) {
@@ -123,7 +123,7 @@ index addedf1837d1..80a9b1f55de5 100644
              return getIntForUser(cr, name, def, cr.getUserId());
          }
  
-@@ -4646,6 +4660,9 @@ public final class Settings {
+@@ -4789,6 +4803,9 @@ public final class Settings {
          @UnsupportedAppUsage
          public static int getIntForUser(ContentResolver cr, String name, int def,
                  @CanBeCURRENT @UserIdInt int userId) {
@@ -133,7 +133,7 @@ index addedf1837d1..80a9b1f55de5 100644
              String v = getStringForUser(cr, name, userId);
              return parseIntSettingWithDefault(v, def);
          }
-@@ -4670,6 +4687,9 @@ public final class Settings {
+@@ -4813,6 +4830,9 @@ public final class Settings {
           */
          public static int getInt(ContentResolver cr, String name)
                  throws SettingNotFoundException {
@@ -143,7 +143,7 @@ index addedf1837d1..80a9b1f55de5 100644
              return getIntForUser(cr, name, cr.getUserId());
          }
  
-@@ -4678,6 +4698,9 @@ public final class Settings {
+@@ -4821,6 +4841,9 @@ public final class Settings {
          public static int getIntForUser(ContentResolver cr, String name,
                  @CanBeCURRENT @UserIdInt int userId)
                  throws SettingNotFoundException {
@@ -153,7 +153,7 @@ index addedf1837d1..80a9b1f55de5 100644
              String v = getStringForUser(cr, name, userId);
              return parseIntSetting(v, name);
          }
-@@ -7670,6 +7693,9 @@ public final class Settings {
+@@ -7845,6 +7868,9 @@ public final class Settings {
           * @return the corresponding value, or null if not present
           */
          public static String getString(ContentResolver resolver, String name) {
@@ -163,7 +163,7 @@ index addedf1837d1..80a9b1f55de5 100644
              return getStringForUser(resolver, name, resolver.getUserId());
          }
  
-@@ -7677,6 +7703,9 @@ public final class Settings {
+@@ -7852,6 +7878,9 @@ public final class Settings {
          @UnsupportedAppUsage
          public static String getStringForUser(ContentResolver resolver, String name,
                  @CanBeCURRENT @UserIdInt int userId) {
@@ -173,7 +173,7 @@ index addedf1837d1..80a9b1f55de5 100644
              if (MOVED_TO_GLOBAL.contains(name)) {
                  Log.w(TAG, "Setting " + name + " has moved from android.provider.Settings.Secure"
                          + " to android.provider.Settings.Global.");
-@@ -7905,6 +7934,9 @@ public final class Settings {
+@@ -8080,6 +8109,9 @@ public final class Settings {
           * or not a valid integer.
           */
          public static int getInt(ContentResolver cr, String name, int def) {
@@ -183,7 +183,7 @@ index addedf1837d1..80a9b1f55de5 100644
              return getIntForUser(cr, name, def, cr.getUserId());
          }
  
-@@ -7912,6 +7944,9 @@ public final class Settings {
+@@ -8087,6 +8119,9 @@ public final class Settings {
          @UnsupportedAppUsage
          public static int getIntForUser(ContentResolver cr, String name, int def,
                  @CanBeCURRENT @UserIdInt int userId) {
@@ -193,7 +193,7 @@ index addedf1837d1..80a9b1f55de5 100644
              String v = getStringForUser(cr, name, userId);
              return parseIntSettingWithDefault(v, def);
          }
-@@ -7936,6 +7971,9 @@ public final class Settings {
+@@ -8111,6 +8146,9 @@ public final class Settings {
           */
          public static int getInt(ContentResolver cr, String name)
                  throws SettingNotFoundException {
@@ -203,7 +203,7 @@ index addedf1837d1..80a9b1f55de5 100644
              return getIntForUser(cr, name, cr.getUserId());
          }
  
-@@ -7943,6 +7981,9 @@ public final class Settings {
+@@ -8118,6 +8156,9 @@ public final class Settings {
          public static int getIntForUser(ContentResolver cr, String name,
                  @CanBeCURRENT @UserIdInt int userId)
                  throws SettingNotFoundException {
@@ -213,7 +213,7 @@ index addedf1837d1..80a9b1f55de5 100644
              String v = getStringForUser(cr, name, userId);
              return parseIntSetting(v, name);
          }
-@@ -13654,6 +13695,13 @@ public final class Settings {
+@@ -14010,6 +14051,13 @@ public final class Settings {
          @Readable
          public static final String HIDE_APPLIST = "hide_applist";
  
@@ -227,7 +227,7 @@ index addedf1837d1..80a9b1f55de5 100644
          /**
           * Keys we no longer back up under the current schema, but want to continue to
           * process when restoring historical backup datasets.
-@@ -19594,6 +19642,9 @@ public final class Settings {
+@@ -20072,6 +20120,9 @@ public final class Settings {
           * @return the corresponding value, or null if not present
           */
          public static String getString(ContentResolver resolver, String name) {
@@ -237,7 +237,7 @@ index addedf1837d1..80a9b1f55de5 100644
              return getStringForUser(resolver, name, resolver.getUserId());
          }
  
-@@ -19601,6 +19652,9 @@ public final class Settings {
+@@ -20079,6 +20130,9 @@ public final class Settings {
          @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
          public static String getStringForUser(ContentResolver resolver, String name,
                  int userHandle) {
@@ -247,7 +247,7 @@ index addedf1837d1..80a9b1f55de5 100644
              if (MOVED_TO_SECURE.contains(name)) {
                  Log.w(TAG, "Setting " + name + " has moved from android.provider.Settings.Global"
                          + " to android.provider.Settings.Secure, returning read-only value.");
-@@ -19816,6 +19870,9 @@ public final class Settings {
+@@ -20294,6 +20348,9 @@ public final class Settings {
           * or not a valid integer.
           */
          public static int getInt(ContentResolver cr, String name, int def) {
@@ -257,7 +257,7 @@ index addedf1837d1..80a9b1f55de5 100644
              String v = getString(cr, name);
              return parseIntSettingWithDefault(v, def);
          }
-@@ -19840,6 +19897,9 @@ public final class Settings {
+@@ -20318,6 +20375,9 @@ public final class Settings {
           */
          public static int getInt(ContentResolver cr, String name)
                  throws SettingNotFoundException {
@@ -267,7 +267,7 @@ index addedf1837d1..80a9b1f55de5 100644
              String v = getString(cr, name);
              return parseIntSetting(v, name);
          }
-@@ -21962,6 +22022,9 @@ public final class Settings {
+@@ -22683,6 +22743,9 @@ public final class Settings {
          @RequiresPermission(Manifest.permission.READ_DEVICE_CONFIG)
          public static String getString(@NonNull String name) {
              ContentResolver resolver = getContentResolver();
@@ -402,10 +402,10 @@ index 000000000000..534f05f7dc9f
 +    }
 +}
 diff --git a/packages/SettingsProvider/src/android/provider/settings/validators/SecureSettingsValidators.java b/packages/SettingsProvider/src/android/provider/settings/validators/SecureSettingsValidators.java
-index 962ca0fa25d8..2879a8c963b4 100644
+index 1d7e4248df8e..83ba04114610 100644
 --- a/packages/SettingsProvider/src/android/provider/settings/validators/SecureSettingsValidators.java
 +++ b/packages/SettingsProvider/src/android/provider/settings/validators/SecureSettingsValidators.java
-@@ -532,5 +532,6 @@ public class SecureSettingsValidators {
+@@ -564,5 +564,6 @@ public class SecureSettingsValidators {
          VALIDATORS.put(Secure.NETWORK_TRAFFIC_AUTOHIDE, BOOLEAN_VALIDATOR);
          VALIDATORS.put(Secure.NETWORK_TRAFFIC_UNITS, new InclusiveIntegerRangeValidator(0, 4));
          VALIDATORS.put(Secure.HIDE_APPLIST, ANY_STRING_VALIDATOR);

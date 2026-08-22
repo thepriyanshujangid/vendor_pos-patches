@@ -1,7 +1,7 @@
-From f544e32a75f27c30c0e5dadee84fcdf8455d2499 Mon Sep 17 00:00:00 2001
+From 1e4dc91a55b4838ab5c1f92006ee0c04d259c5ab Mon Sep 17 00:00:00 2001
 From: BlueHeart01 <sayankumbhakar123@gmail.com>
 Date: Mon, 6 Apr 2026 17:20:33 +0000
-Subject: [PATCH 5/6] Settings: Enable `window_ignore_secure` and
+Subject: [PATCH 4/4] Settings: Enable `window_ignore_secure` and
  `hide_screen_capture_status` by default
 
 Change-Id: I245a397ff84a6fbd3d111353e53833f9861595e6
@@ -10,19 +10,19 @@ Change-Id: I245a397ff84a6fbd3d111353e53833f9861595e6
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/res/xml/more_security_privacy_settings.xml b/res/xml/more_security_privacy_settings.xml
-index ff91cefc5c2..4e6de1bf4db 100644
+index 95d0c0c5669..5e02b9faa15 100644
 --- a/res/xml/more_security_privacy_settings.xml
 +++ b/res/xml/more_security_privacy_settings.xml
-@@ -235,7 +235,7 @@
+@@ -242,7 +242,7 @@
          android:key="window_ignore_secure"
          android:title="@string/ignore_window_secure_title"
          android:summary="@string/ignore_window_secure_summary"
 -        android:defaultValue="false"/>
 +        android:defaultValue="true"/>
  
-         <Preference
-             android:key="hide_applist_setting"
-@@ -247,7 +247,7 @@
+     <Preference
+         android:order="310"
+@@ -265,7 +265,7 @@
              android:key="hide_screen_capture_status"
              android:title="@string/hide_screen_capture_status_title"
              android:summary="@string/hide_screen_capture_status_summary"

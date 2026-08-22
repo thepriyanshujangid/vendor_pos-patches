@@ -1,7 +1,7 @@
-From c7bf0aaca1c5f6679bc8d8b3c0ffc7c9501864a2 Mon Sep 17 00:00:00 2001
+From e82c46f70e49548c401a0e533ceb5ddd88f0d252 Mon Sep 17 00:00:00 2001
 From: someone5678 <someone5678@users.noreply.github.com>
 Date: Tue, 21 May 2024 10:13:17 -0400
-Subject: [PATCH 2/6] Settings: Allow to hide screen capture status from apps
+Subject: [PATCH 2/4] Settings: Allow to hide screen capture status from apps
  [2/2]
 
 * Allow to hide screen capture detection from privacy invasive apps
@@ -14,10 +14,10 @@ Signed-off-by: someone5678 <someone5678@users.noreply.github.com>
  2 files changed, 10 insertions(+)
 
 diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
-index ec36df961dc..ad0b37d7b6d 100644
+index c5c0b7ceff3..1a082bba21d 100644
 --- a/res/values/custom_strings.xml
 +++ b/res/values/custom_strings.xml
-@@ -374,4 +374,8 @@
+@@ -424,4 +424,8 @@
      <string name="menu_show_overlay">Show overlay</string>
      <string name="menu_hide_overlay">Hide overlay</string>
  
@@ -27,10 +27,10 @@ index ec36df961dc..ad0b37d7b6d 100644
 +
  </resources>
 diff --git a/res/xml/more_security_privacy_settings.xml b/res/xml/more_security_privacy_settings.xml
-index 523b3acaa34..588c35a9f49 100644
+index 8681ea197e1..d8adcb5a619 100644
 --- a/res/xml/more_security_privacy_settings.xml
 +++ b/res/xml/more_security_privacy_settings.xml
-@@ -243,4 +243,10 @@
+@@ -261,4 +261,10 @@
              android:summary="@string/hide_applist_summary"
              android:fragment="com.android.settings.custom.privacy.HideAppListSettings" />
  
