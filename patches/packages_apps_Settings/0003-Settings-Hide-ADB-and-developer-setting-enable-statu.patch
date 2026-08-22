@@ -1,7 +1,7 @@
-From 377a9f0365e67dddcf7108237073f9209847b00e Mon Sep 17 00:00:00 2001
+From eb92b255adaa14d9d23442a8baff5e0e75b26cba Mon Sep 17 00:00:00 2001
 From: someone5678 <nemui3353@gmail.com>
 Date: Wed, 31 May 2023 22:59:13 +0900
-Subject: [PATCH 3/6] Settings: Hide ADB and developer setting enable status
+Subject: [PATCH 3/4] Settings: Hide ADB and developer setting enable status
  [2/2]
 
 * Code is adapted from cutout force full screen
@@ -186,7 +186,7 @@ index 00000000000..d0b638028a9
 +        android:showAsAction="never" />
 +</menu>
 diff --git a/res/values/custom_arrays.xml b/res/values/custom_arrays.xml
-index 688bfc24cde..9f20209806d 100644
+index b9bd33c0c24..37777f20fd4 100644
 --- a/res/values/custom_arrays.xml
 +++ b/res/values/custom_arrays.xml
 @@ -50,7 +50,16 @@
@@ -207,10 +207,10 @@ index 688bfc24cde..9f20209806d 100644
      <string-array name="hide_applist_hidden_apps" translatable="false">
          <item>android</item>
 diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
-index ad0b37d7b6d..c8ffbb025e3 100644
+index 1a082bba21d..87f4091c1b9 100644
 --- a/res/values/custom_strings.xml
 +++ b/res/values/custom_strings.xml
-@@ -378,4 +378,10 @@
+@@ -428,4 +428,10 @@
      <string name="hide_screen_capture_status_title">Hide screen capture status</string>
      <string name="hide_screen_capture_status_summary">Hide screen capture and screen record status from all applications. Can be convenient in some cases but may lead to privacy leaks. Need to restart applications for the change to take effect.</string>
  
@@ -222,10 +222,10 @@ index ad0b37d7b6d..c8ffbb025e3 100644
 +
  </resources>
 diff --git a/res/xml/more_security_privacy_settings.xml b/res/xml/more_security_privacy_settings.xml
-index 588c35a9f49..ff91cefc5c2 100644
+index d8adcb5a619..95d0c0c5669 100644
 --- a/res/xml/more_security_privacy_settings.xml
 +++ b/res/xml/more_security_privacy_settings.xml
-@@ -249,4 +249,11 @@
+@@ -267,4 +267,11 @@
              android:summary="@string/hide_screen_capture_status_summary"
              android:defaultValue="false"/>
  

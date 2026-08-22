@@ -1,7 +1,7 @@
-From 67921d63c0cc0b0881949c2047ab3be4e10bca0f Mon Sep 17 00:00:00 2001
+From 7795f44356ab0df0dad7b32244aca777902c9123 Mon Sep 17 00:00:00 2001
 From: someone5678 <59456192+someone5678@users.noreply.github.com>
 Date: Sat, 7 Dec 2024 10:48:32 +0900
-Subject: [PATCH 1/6] Settings: Add support for hide applist [2/2]
+Subject: [PATCH 1/4] Settings: Add support for hide applist [2/2]
 
 * Code is adapted from cutout force full screen
 * Give authorship
@@ -22,9 +22,9 @@ Change-Id: I0c0ea99477e3045ff218b077ec547dba23ca6262
  res/values/custom_arrays.xml                  |  10 +
  res/values/custom_strings.xml                 |   7 +
  res/xml/hide_applist_prefs.xml                |  11 +
- res/xml/more_security_privacy_settings.xml    |   6 +
+ res/xml/more_security_privacy_settings.xml    |   5 +
  .../privacy/HideAppListStatusSettings.kt      | 321 ++++++++++++++++++
- 8 files changed, 480 insertions(+)
+ 8 files changed, 479 insertions(+)
  create mode 100644 res/layout/hide_applist_layout.xml
  create mode 100644 res/layout/hide_applist_list_item.xml
  create mode 100644 res/menu/hide_applist_menu.xml
@@ -175,7 +175,7 @@ index 00000000000..5681ff614d7
 +        android:showAsAction="never" />
 +</menu>
 diff --git a/res/values/custom_arrays.xml b/res/values/custom_arrays.xml
-index 5dafc746e3d..688bfc24cde 100644
+index 3a0aba23458..b9bd33c0c24 100644
 --- a/res/values/custom_arrays.xml
 +++ b/res/values/custom_arrays.xml
 @@ -50,6 +50,16 @@
@@ -194,16 +194,16 @@ index 5dafc746e3d..688bfc24cde 100644
 +        <item>com.google.android.webview</item>
      </string-array>
  
- </resources>
+     <!-- Locale Picker -->
 diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
-index 36420fd1834..ec36df961dc 100644
+index ce7a9d259b3..c5c0b7ceff3 100644
 --- a/res/values/custom_strings.xml
 +++ b/res/values/custom_strings.xml
-@@ -367,4 +367,11 @@
-     <string name="language_picker_page">Language picker page</string>
-     <string name="search_region">Search regions</string>
-     <string name="search_region_page">Search region page</string>
-+
+@@ -417,4 +417,11 @@
+     <string name="software_update_up_to_date_header">Your Pixel is up to date</string>
+     <string name="software_update_up_to_specific_date_summary">Updated to %1$s</string>
+     <string name="system_update_entry_title">System update</string>
++    
 +    <!-- Hide applist -->
 +    <string name="hide_applist_title">Hide applist</string>
 +    <string name="hide_applist_summary">Prevent apps from checking selected apps from appslist</string>
@@ -229,19 +229,19 @@ index 00000000000..7193f192d0c
 +
 +</PreferenceScreen>
 diff --git a/res/xml/more_security_privacy_settings.xml b/res/xml/more_security_privacy_settings.xml
-index 45e2f196ec0..523b3acaa34 100644
+index 6dc0d0abba3..8681ea197e1 100644
 --- a/res/xml/more_security_privacy_settings.xml
 +++ b/res/xml/more_security_privacy_settings.xml
-@@ -237,4 +237,10 @@
-         android:summary="@string/ignore_window_secure_summary"
-         android:defaultValue="false"/>
- 
-+        <Preference
+@@ -255,5 +255,10 @@
+         <intent android:action="com.android.binarytransparency.LAUNCHER"
+                 android:targetPackage="com.google.attestation.verifier" />
+     </Preference>
++    <Preference
 +            android:key="hide_applist_setting"
 +            android:title="@string/hide_applist_title"
 +            android:summary="@string/hide_applist_summary"
 +            android:fragment="com.android.settings.custom.privacy.HideAppListSettings" />
-+
+ 
  </PreferenceScreen>
 diff --git a/src/com/android/settings/custom/privacy/HideAppListStatusSettings.kt b/src/com/android/settings/custom/privacy/HideAppListStatusSettings.kt
 new file mode 100644
